@@ -24,3 +24,58 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-scale {
+  0% { 
+    opacity: 0; 
+    transform: translateY(-30px) scale(0.9); 
+    filter: blur(10px);
+  }
+  50% {
+    opacity: 0.5;
+    transform: translateY(-15px) scale(0.95);
+    filter: blur(5px);
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+    filter: blur(0px);
+  }
+}
+
+@keyframes modal-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes backdrop-enter {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+.animate-fade-in { animation: fade-in 0.5s ease-out; }
+.animate-fade-in-scale { animation: fade-in-scale 1s ease-out; }
+.animate-modal-enter { animation: modal-enter 0.3s ease-out; }
+.animate-backdrop-enter { animation: backdrop-enter 0.3s ease-out; }
+.animate-shake { animation: shake 0.5s ease-in-out; }
