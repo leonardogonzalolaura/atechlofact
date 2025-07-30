@@ -1,18 +1,27 @@
 'use client'
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAlert } from './Alert';
 
 interface CustomerRegistrationProps {
   isOpen: boolean;
   onClose: () => void;
+  initialData?: {
+    razonSocial?: string;
+    tipoDocumento?: string;
+    numeroDocumento?: string;
+    direccion?: string;
+  };
+  onSave?: (customerData: any) => void;
 }
 
-const CustomerRegistration = ({ isOpen, onClose }: CustomerRegistrationProps) => {
+const CustomerRegistration = ({ isOpen, onClose, initialData, onSave }: CustomerRegistrationProps) => {
   const { theme } = useTheme();
+  const { showError, showSuccess, AlertComponent } = useAlert();
   const [customerData, setCustomerData] = useState({
     tipoDocumento: 'RUC',
     numeroDocumento: '',
-    razonSocial: '',
+    razonSocial: initialData?.razonSocial || '',
     nombreComercial: '',
     direccion: '',
     telefono: '',
@@ -20,12 +29,63 @@ const CustomerRegistration = ({ isOpen, onClose }: CustomerRegistrationProps) =>
     contacto: ''
   });
 
+  // Actualizar datos cuando cambie initialData
+  React.useEffect(() => {
+    if (initialData?.razonSocial) {
+      setCustomerData(prev => ({
+        ...prev,
+        razonSocial: initialData.razonSocial || ''
+      }));
+    }
+  }, [initialData]);
+
   if (!isOpen) return null;
 
+  const validateCustomer = () => {
+    const errors = [];
+    
+    // Validar campos obligatorios
+    if (!customerData.numeroDocumento.trim()) errors.push('Número de documento es requerido');
+    if (!customerData.razonSocial.trim()) errors.push('Razón social es requerida');
+    if (!customerData.direccion.trim()) errors.push('Dirección es requerida');
+    
+    // Validar formato de documento
+    if (customerData.tipoDocumento === 'RUC' && customerData.numeroDocumento.length !== 11) {
+      errors.push('RUC debe tener 11 dígitos');
+    }
+    if (customerData.tipoDocumento === 'DNI' && customerData.numeroDocumento.length !== 8) {
+      errors.push('DNI debe tener 8 dígitos');
+    }
+    
+    // Validar email si se proporciona
+    if (customerData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerData.email)) {
+      errors.push('Email no tiene formato válido');
+    }
+    
+    return errors;
+  };
+
   const handleSave = () => {
+    const errors = validateCustomer();
+    
+    if (errors.length > 0) {
+      showError('Errores en el registro', errors);
+      return;
+    }
+    
     console.log('Guardando cliente...', customerData);
-    // Aquí iría la lógica para guardar el cliente
-    onClose();
+    // Aquí iría la lógica para guardar el cliente en la API
+    
+    showSuccess('Cliente registrado', 'El cliente se ha registrado correctamente');
+    
+    // Si hay callback onSave, ejecutarlo con los datos del cliente
+    setTimeout(() => {
+      if (onSave) {
+        onSave(customerData);
+      } else {
+        onClose();
+      }
+    }, 1500);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -176,6 +236,8 @@ const CustomerRegistration = ({ isOpen, onClose }: CustomerRegistrationProps) =>
             Guardar Cliente
           </button>
         </div>
+        
+        <AlertComponent />
       </div>
     </div>
   );

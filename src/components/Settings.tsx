@@ -1,6 +1,7 @@
 'use client'
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTax } from '../contexts/TaxContext';
 
 interface SettingsProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface SettingsProps {
 
 const Settings = ({ isOpen, onClose }: SettingsProps) => {
   const { theme } = useTheme();
+  const { taxConfig, updateTaxConfig } = useTax();
   const [activeTab, setActiveTab] = useState('company');
 
   const [companyData, setCompanyData] = useState({
@@ -24,13 +26,39 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
     serieBoleta: 'B001',
     serieNota: 'N001',
     numeracionAutomatica: true,
-    igv: 18
+    igv: Math.round(taxConfig.igvRate * 100) // Convertir de decimal a porcentaje
   });
+
+  // Cargar configuración desde localStorage al abrir
+  React.useEffect(() => {
+    if (isOpen && typeof window !== 'undefined') {
+      const stored = localStorage.getItem('billingConfig');
+      if (stored) {
+        const config = JSON.parse(stored);
+        setBillingConfig(prev => ({ ...prev, ...config }));
+      }
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleSave = () => {
     console.log('Guardando configuración...', { companyData, billingConfig });
+    
+    // Guardar en localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('companyData', JSON.stringify(companyData));
+      localStorage.setItem('billingConfig', JSON.stringify(billingConfig));
+      
+      // Actualizar contexto de impuestos
+      updateTaxConfig({
+        igvRate: billingConfig.igv / 100 // Convertir porcentaje a decimal
+      });
+      
+      // Disparar evento para notificar cambios
+      window.dispatchEvent(new Event('billingConfigChanged'));
+    }
+    
     onClose();
   };
 
@@ -175,7 +203,13 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
                     <input
                       type="number"
                       value={billingConfig.igv}
-                      onChange={(e) => setBillingConfig({...billingConfig, igv: Number(e.target.value)})}
+                      onChange={(e) => {
+                        const newIgv = Number(e.target.value);
+                        setBillingConfig({...billingConfig, igv: newIgv});
+                      }}
+                      min="0"
+                      max="100"
+                      step="0.01"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     />
                   </div>

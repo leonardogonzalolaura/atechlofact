@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAlert } from './Alert';
 
 interface RemissionGuideCreationProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface RemissionGuideCreationProps {
 
 const RemissionGuideCreation = ({ isOpen, onClose }: RemissionGuideCreationProps) => {
   const { theme } = useTheme();
+  const { showError, showSuccess, AlertComponent } = useAlert();
   const [guideData, setGuideData] = useState({
     serie: 'T001',
     numero: '000001',
@@ -92,9 +94,59 @@ const RemissionGuideCreation = ({ isOpen, onClose }: RemissionGuideCreationProps
 
   const pesoTotal = items.reduce((sum, item) => sum + (item.peso * item.cantidad), 0);
 
+  const validateForm = () => {
+    const errors = [];
+    
+    // Validar información de la guía
+    if (!guideData.serie.trim()) errors.push('Serie es requerida');
+    if (!guideData.numero.trim()) errors.push('Número es requerido');
+    if (!guideData.fechaEmision) errors.push('Fecha de emisión es requerida');
+    if (!guideData.fechaTraslado) errors.push('Fecha de traslado es requerida');
+    
+    // Validar datos del transporte
+    if (!guideData.numeroPlaca.trim()) errors.push('Número de placa es requerido');
+    if (!guideData.conductor.numeroDocumento.trim()) errors.push('Número de documento del conductor es requerido');
+    if (!guideData.conductor.nombres.trim()) errors.push('Nombres del conductor es requerido');
+    if (!guideData.conductor.licencia.trim()) errors.push('Licencia del conductor es requerida');
+    
+    // Validar puntos de traslado
+    if (!guideData.puntoPartida.direccion.trim()) errors.push('Dirección de partida es requerida');
+    if (!guideData.puntoLlegada.direccion.trim()) errors.push('Dirección de llegada es requerida');
+    if (!guideData.puntoPartida.ubigeo.trim()) errors.push('Ubigeo de partida es requerido');
+    if (!guideData.puntoLlegada.ubigeo.trim()) errors.push('Ubigeo de llegada es requerido');
+    
+    // Validar destinatario
+    if (!guideData.destinatario.numeroDocumento.trim()) errors.push('Número de documento del destinatario es requerido');
+    if (!guideData.destinatario.razonSocial.trim()) errors.push('Razón social del destinatario es requerida');
+    
+    // Validar que hay al menos un item
+    if (items.length === 0) errors.push('Debe agregar al menos un item');
+    
+    // Validar items
+    const invalidItems = items.filter(item => 
+      !item.descripcion.trim() || item.cantidad <= 0
+    );
+    if (invalidItems.length > 0) {
+      errors.push('Todos los items deben tener descripción y cantidad válidos');
+    }
+    
+    // Validar peso total mayor a 0
+    if (pesoTotal <= 0) errors.push('El peso total debe ser mayor a 0');
+    
+    return errors;
+  };
+
   const handleSave = () => {
+    const errors = validateForm();
+    
+    if (errors.length > 0) {
+      showError('Errores en la guía de remisión', errors);
+      return;
+    }
+    
     console.log('Guardando guía de remisión...', { guideData, items, pesoTotal });
-    onClose();
+    showSuccess('Guía de remisión generada', 'La guía de remisión se ha generado correctamente');
+    setTimeout(() => onClose(), 2000);
   };
 
   return (
@@ -503,6 +555,8 @@ const RemissionGuideCreation = ({ isOpen, onClose }: RemissionGuideCreationProps
             Generar Guía de Remisión
           </button>
         </div>
+        
+        <AlertComponent />
       </div>
     </div>
   );

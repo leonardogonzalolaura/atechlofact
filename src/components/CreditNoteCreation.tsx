@@ -1,6 +1,8 @@
 'use client'
 import { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTax } from '../contexts/TaxContext';
+import { useAlert } from './Alert';
 
 interface CreditNoteCreationProps {
   isOpen: boolean;
@@ -9,6 +11,8 @@ interface CreditNoteCreationProps {
 
 const CreditNoteCreation = ({ isOpen, onClose }: CreditNoteCreationProps) => {
   const { theme } = useTheme();
+  const { taxConfig, calculateIGV, calculateTotal } = useTax();
+  const { showError, showSuccess, AlertComponent } = useAlert();
   const [creditNoteData, setCreditNoteData] = useState({
     serie: 'FC01',
     numero: '000001',
@@ -50,12 +54,46 @@ const CreditNoteCreation = ({ isOpen, onClose }: CreditNoteCreationProps) => {
   ];
 
   const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-  const igv = subtotal * 0.18;
-  const total = subtotal + igv;
+  const igv = calculateIGV(subtotal);
+  const total = calculateTotal(subtotal);
+
+  const validateForm = () => {
+    const errors = [];
+    
+    // Validar información de la nota
+    if (!creditNoteData.serie.trim()) errors.push('Serie es requerida');
+    if (!creditNoteData.numero.trim()) errors.push('Número es requerido');
+    if (!creditNoteData.fechaEmision) errors.push('Fecha de emisión es requerida');
+    
+    // Validar documento de referencia
+    if (!creditNoteData.documentoReferencia.serie.trim()) errors.push('Serie del documento de referencia es requerida');
+    if (!creditNoteData.documentoReferencia.numero.trim()) errors.push('Número del documento de referencia es requerido');
+    if (!creditNoteData.documentoReferencia.fechaEmision) errors.push('Fecha del documento de referencia es requerida');
+    
+    // Validar motivo
+    if (!creditNoteData.motivoAnulacion.trim()) errors.push('Motivo de anulación es requerido');
+    
+    // Validar cliente
+    if (!creditNoteData.cliente.numeroDocumento.trim()) errors.push('Número de documento del cliente es requerido');
+    if (!creditNoteData.cliente.razonSocial.trim()) errors.push('Razón social del cliente es requerida');
+    
+    // Validar total mayor a 0
+    if (total <= 0) errors.push('El total debe ser mayor a 0');
+    
+    return errors;
+  };
 
   const handleSave = () => {
+    const errors = validateForm();
+    
+    if (errors.length > 0) {
+      showError('Errores en la nota de crédito', errors);
+      return;
+    }
+    
     console.log('Guardando nota de crédito...', { creditNoteData, items, total });
-    onClose();
+    showSuccess('Nota de crédito generada', 'La nota de crédito se ha generado correctamente');
+    setTimeout(() => onClose(), 2000);
   };
 
   return (
@@ -258,15 +296,15 @@ const CreditNoteCreation = ({ isOpen, onClose }: CreditNoteCreationProps) => {
                 <div className="w-64 space-y-2 bg-gray-50 p-4 rounded-lg">
                   <div className="flex justify-between text-sm text-gray-700 font-medium">
                     <span>Subtotal:</span>
-                    <span>{subtotal.toFixed(2)}</span>
+                    <span>{taxConfig.currencySymbol} {subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-gray-700 font-medium">
-                    <span>IGV (18%):</span>
-                    <span>{igv.toFixed(2)}</span>
+                    <span>{taxConfig.igvLabel} ({(taxConfig.igvRate * 100).toFixed(0)}%):</span>
+                    <span>{taxConfig.currencySymbol} {igv.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between font-bold text-lg border-t pt-2 text-gray-900">
                     <span>Total a Anular:</span>
-                    <span>{total.toFixed(2)}</span>
+                    <span>{taxConfig.currencySymbol} {total.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -300,6 +338,8 @@ const CreditNoteCreation = ({ isOpen, onClose }: CreditNoteCreationProps) => {
             Generar Nota de Crédito
           </button>
         </div>
+        
+        <AlertComponent />
       </div>
     </div>
   );

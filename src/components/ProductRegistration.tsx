@@ -1,26 +1,58 @@
 'use client'
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTax } from '../contexts/TaxContext';
+import { useAlert } from './Alert';
 
 interface ProductRegistrationProps {
   isOpen: boolean;
   onClose: () => void;
+  initialData?: {
+    codigo?: string;
+    descripcion?: string;
+    categoria?: string;
+    unidadMedida?: string;
+    precio?: number;
+    stock?: number;
+    stockMinimo?: number;
+    afectoIGV?: boolean;
+  };
+  onSave?: (productData: any) => void;
 }
 
-const ProductRegistration = ({ isOpen, onClose }: ProductRegistrationProps) => {
+const ProductRegistration = ({ isOpen, onClose, initialData, onSave }: ProductRegistrationProps) => {
   const { theme } = useTheme();
+  const { taxConfig } = useTax();
+  const { showError, showSuccess, AlertComponent } = useAlert();
   const [productData, setProductData] = useState({
-    codigo: '',
-    descripcion: '',
-    categoria: 'PRODUCTO',
-    unidadMedida: 'NIU',
-    precio: 0,
-    stock: 0,
-    stockMinimo: 0,
-    afectoIGV: true,
+    codigo: initialData?.codigo || '',
+    descripcion: initialData?.descripcion || '',
+    categoria: initialData?.categoria || 'PRODUCTO',
+    unidadMedida: initialData?.unidadMedida || 'NIU',
+    precio: initialData?.precio || 0,
+    stock: initialData?.stock || 0,
+    stockMinimo: initialData?.stockMinimo || 0,
+    afectoIGV: initialData?.afectoIGV ?? true,
     codigoSUNAT: '',
     observaciones: ''
   });
+
+  // Actualizar datos cuando cambie initialData
+  React.useEffect(() => {
+    if (initialData) {
+      setProductData(prev => ({
+        ...prev,
+        codigo: initialData.codigo || '',
+        descripcion: initialData.descripcion || '',
+        categoria: initialData.categoria || 'PRODUCTO',
+        unidadMedida: initialData.unidadMedida || 'NIU',
+        precio: initialData.precio || 0,
+        stock: initialData.stock || 0,
+        stockMinimo: initialData.stockMinimo || 0,
+        afectoIGV: initialData.afectoIGV ?? true
+      }));
+    }
+  }, [initialData]);
 
   if (!isOpen) return null;
 
@@ -41,10 +73,40 @@ const ProductRegistration = ({ isOpen, onClose }: ProductRegistrationProps) => {
     { value: 'PQT', label: 'PQT - Paquete' }
   ];
 
+  const validateProduct = () => {
+    const errors = [];
+    
+    // Validar campos obligatorios
+    if (!productData.codigo.trim()) errors.push('Código del producto es requerido');
+    if (!productData.descripcion.trim()) errors.push('Descripción es requerida');
+    if (productData.precio <= 0) errors.push('Precio debe ser mayor a 0');
+    
+    // Validar stock para productos (no servicios)
+    if (productData.categoria !== 'SERVICIO') {
+      if (productData.stock < 0) errors.push('Stock no puede ser negativo');
+      if (productData.stockMinimo < 0) errors.push('Stock mínimo no puede ser negativo');
+    }
+    
+    return errors;
+  };
+
   const handleSave = () => {
+    const errors = validateProduct();
+    
+    if (errors.length > 0) {
+      showError('Por favor corrija los siguientes errores:',errors);
+      return;
+    }
+    
     console.log('Guardando producto...', productData);
     // Aquí iría la lógica para guardar el producto
-    onClose();
+    
+    // Si hay callback onSave, ejecutarlo con los datos del producto
+    if (onSave) {
+      onSave(productData);
+    } else {
+      onClose();
+    }
   };
 
   const handleInputChange = (field: string, value: string | number | boolean) => {
@@ -231,11 +293,11 @@ const ProductRegistration = ({ isOpen, onClose }: ProductRegistrationProps) => {
                     onChange={(e) => handleInputChange('afectoIGV', e.target.checked)}
                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
-                  <span className="text-sm font-medium text-gray-700">Afecto a IGV (18%)</span>
+                  <span className="text-sm font-medium text-gray-700">Afecto a {taxConfig.igvLabel} ({(taxConfig.igvRate * 100).toFixed(0)}%)</span>
                 </label>
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                Marque esta opción si el producto está gravado con IGV
+                Marque esta opción si el producto está gravado con {taxConfig.igvLabel}
               </p>
             </div>
 
@@ -267,6 +329,7 @@ const ProductRegistration = ({ isOpen, onClose }: ProductRegistrationProps) => {
             Guardar Producto
           </button>
         </div>
+        <AlertComponent />
       </div>
     </div>
   );

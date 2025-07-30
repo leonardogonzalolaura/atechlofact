@@ -2,6 +2,9 @@
 import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTax } from '../contexts/TaxContext';
+import CustomerRegistration from './CustomerRegistration';
+import { useAlert } from './Alert';
 
 interface InvoiceCreationProps {
   isOpen: boolean;
@@ -18,6 +21,8 @@ interface InvoiceItem {
 
 const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
   const { theme } = useTheme();
+  const { taxConfig, calculateIGV, calculateTotal } = useTax();
+  const { showError, showSuccess, AlertComponent } = useAlert();
   const [invoiceData, setInvoiceData] = useState({
     tipoComprobante: 'FACTURA',
     serie: 'F001',
@@ -43,6 +48,12 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
   const [showSearchResults, setShowSearchResults] = useState<{[key: string]: boolean}>({});
   const [dropdownPosition, setDropdownPosition] = useState<{top: number, left: number, width: number}>({top: 0, left: 0, width: 0});
   const inputRefs = useRef<{[key: string]: HTMLInputElement}>({});
+  const [customerSearchResults, setCustomerSearchResults] = useState<any[]>([]);
+  const [showCustomerResults, setShowCustomerResults] = useState(false);
+  const [customerDropdownPosition, setCustomerDropdownPosition] = useState<{top: number, left: number, width: number}>({top: 0, left: 0, width: 0});
+  const customerInputRef = useRef<HTMLInputElement>(null);
+  const [showNewCustomerModal, setShowNewCustomerModal] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState('');
 
   // Productos disponibles (en producción vendría de la API)
   const availableProducts = [
@@ -54,11 +65,20 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
     { id: '6', codigo: 'SERV002', descripcion: 'Soporte Técnico Remoto', precio: 80.00, categoria: 'SERVICIO', afectoIGV: true }
   ];
 
+  // Clientes disponibles (en producción vendría de la API)
+  const availableCustomers = [
+    { id: '1', tipoDocumento: 'RUC', numeroDocumento: '20123456789', razonSocial: 'Empresa ABC S.A.C.', direccion: 'Av. Principal 123, Lima' },
+    { id: '2', tipoDocumento: 'DNI', numeroDocumento: '12345678', razonSocial: 'Juan Pérez García', direccion: 'Jr. Los Olivos 456, Lima' },
+    { id: '3', tipoDocumento: 'RUC', numeroDocumento: '20987654321', razonSocial: 'Comercial XYZ E.I.R.L.', direccion: 'Av. Comercio 789, Lima' },
+    { id: '4', tipoDocumento: 'DNI', numeroDocumento: '87654321', razonSocial: 'María González López', direccion: 'Calle Las Flores 321, Lima' }
+  ];
+
   // Cerrar dropdown al hacer clic fuera
   React.useEffect(() => {
     const handleClickOutside = (e: any) => {
       if (!e.target.closest('.search-container')) {
         setShowSearchResults({});
+        setShowCustomerResults(false);
       }
     };
     
@@ -114,7 +134,7 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
     if (inputElement) {
       const rect = inputElement.getBoundingClientRect();
       setDropdownPosition({
-        top: rect.bottom + window.scrollY-100,
+        top: rect.bottom + window.scrollY,
         left: rect.left + window.scrollX,
         width: Math.max(rect.width, 300)
       });
@@ -144,11 +164,51 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
     setShowSearchResults(prev => ({ ...prev, [itemId]: false }));
   };
 
+  const searchCustomers = (searchTerm: string) => {
+    if (searchTerm.length < 2) {
+      setShowCustomerResults(false);
+      return;
+    }
+    
+    const results = availableCustomers.filter(customer => 
+      customer.numeroDocumento.includes(searchTerm) ||
+      customer.razonSocial.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    setCustomerSearchResults(results);
+    
+    // Calcular posición del dropdown
+    if (customerInputRef.current) {
+      const rect = customerInputRef.current.getBoundingClientRect();
+      setCustomerDropdownPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: Math.max(rect.width, 400)
+      });
+    }
+    
+    // Mostrar dropdown siempre que haya texto (para mostrar opción de registro si no hay resultados)
+    setShowCustomerResults(searchTerm.length >= 2);
+  };
+
+  const selectCustomer = (customer: any) => {
+    setInvoiceData(prev => ({
+      ...prev,
+      cliente: {
+        tipoDocumento: customer.tipoDocumento,
+        numeroDocumento: customer.numeroDocumento,
+        razonSocial: customer.razonSocial,
+        direccion: customer.direccion
+      }
+    }));
+    setShowCustomerResults(false);
+  };
+
 
 
   const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-  const igv = subtotal * 0.18;
-  const total = subtotal + igv;
+  const igv = calculateIGV(subtotal);
+  const total = calculateTotal(subtotal);
 
   const openProductSelector = (itemId: string) => {
     setSelectedItemId(itemId);
@@ -162,9 +222,47 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
     setSelectedItemId('');
   };
 
+  const validateForm = () => {
+    const errors = [];
+    
+    // Validar información del comprobante
+    if (!invoiceData.serie.trim()) errors.push('Serie es requerida');
+    if (!invoiceData.numero.trim()) errors.push('Número es requerido');
+    if (!invoiceData.fechaEmision) errors.push('Fecha de emisión es requerida');
+    
+    // Validar cliente
+    if (!invoiceData.cliente.numeroDocumento.trim()) errors.push('Número de documento del cliente es requerido');
+    if (!invoiceData.cliente.razonSocial.trim()) errors.push('Razón social del cliente es requerida');
+    if (!invoiceData.cliente.direccion.trim()) errors.push('Dirección del cliente es requerida');
+    
+    // Validar que hay al menos un item
+    if (items.length === 0) errors.push('Debe agregar al menos un item');
+    
+    // Validar items
+    const invalidItems = items.filter(item => 
+      !item.descripcion.trim() || item.cantidad <= 0 || item.precio <= 0
+    );
+    if (invalidItems.length > 0) {
+      errors.push('Todos los items deben tener descripción, cantidad y precio válidos');
+    }
+    
+    // Validar total mayor a 0
+    if (total <= 0) errors.push('El total debe ser mayor a 0');
+    
+    return errors;
+  };
+
   const handleSave = () => {
+    const errors = validateForm();
+    
+    if (errors.length > 0) {
+      showError('Errores en la factura', errors);
+      return;
+    }
+    
     console.log('Guardando factura...', { invoiceData, items, subtotal, igv, total });
-    onClose();
+    showSuccess('Factura generada', 'La factura se ha generado correctamente');
+    setTimeout(() => onClose(), 2000);
   };
 
   return (
@@ -282,16 +380,39 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Razón Social / Nombres</label>
-                  <input
-                    type="text"
-                    value={invoiceData.cliente.razonSocial}
-                    onChange={(e) => setInvoiceData({
-                      ...invoiceData, 
-                      cliente: {...invoiceData.cliente, razonSocial: e.target.value}
-                    })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    placeholder="Razón social o nombres completos"
-                  />
+                  <div className="relative search-container">
+                    <input
+                      ref={customerInputRef}
+                      type="text"
+                      value={invoiceData.cliente.razonSocial}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setInvoiceData({
+                          ...invoiceData, 
+                          cliente: {...invoiceData.cliente, razonSocial: value}
+                        });
+
+                        searchCustomers(value);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (customerSearchResults.length > 0) {
+                            selectCustomer(customerSearchResults[0]);
+                          }
+                        } else if (e.key === 'Escape') {
+                          setShowCustomerResults(false);
+                        }
+                      }}
+                      onBlur={() => {
+                        setTimeout(() => {
+                          setShowCustomerResults(false);
+                        }, 150);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      placeholder="Escriba para buscar clientes..."
+                    />
+                  </div>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Dirección</label>
@@ -422,15 +543,15 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
                 <div className="w-64 space-y-2 bg-gray-50 p-4 rounded-lg">
                   <div className="flex justify-between text-sm text-gray-700 font-medium">
                     <span>Subtotal:</span>
-                    <span>{subtotal.toFixed(2)}</span>
+                    <span>{taxConfig.currencySymbol} {subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-gray-700 font-medium">
-                    <span>IGV (18%):</span>
-                    <span>{igv.toFixed(2)}</span>
+                    <span>{taxConfig.igvLabel} ({(taxConfig.igvRate * 100).toFixed(0)}%):</span>
+                    <span>{taxConfig.currencySymbol} {igv.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between font-bold text-lg border-t pt-2 text-gray-900">
                     <span>Total:</span>
-                    <span>{total.toFixed(2)}</span>
+                    <span>{taxConfig.currencySymbol} {total.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -508,7 +629,7 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
           </div>
         )}
 
-        {/* Dropdown de búsqueda usando Portal */}
+        {/* Dropdown de búsqueda de productos usando Portal */}
         {Object.keys(showSearchResults).some(key => showSearchResults[key]) && searchResults.length > 0 && 
           typeof document !== 'undefined' && createPortal(
             <div 
@@ -541,6 +662,86 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
             document.body
           )
         }
+
+        {/* Dropdown de búsqueda de clientes usando Portal */}
+        {showCustomerResults && typeof document !== 'undefined' && createPortal(
+          <div 
+            className="fixed bg-white border border-gray-300 rounded shadow-lg z-50 max-h-48 overflow-y-auto"
+            style={{
+              top: `${customerDropdownPosition.top}px`,
+              left: `${customerDropdownPosition.left}px`,
+              width: `${customerDropdownPosition.width}px`
+            }}
+          >
+            {customerSearchResults.length > 0 ? (
+              customerSearchResults.slice(0, 5).map((customer) => (
+                <button
+                  key={customer.id}
+                  type="button"
+                  onClick={() => selectCustomer(customer)}
+                  className="w-full text-left px-3 py-2 hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
+                >
+                  <div className="text-sm">
+                    <div className="font-medium text-gray-900">{customer.razonSocial}</div>
+                    <div className="text-gray-500 text-xs">{customer.tipoDocumento}: {customer.numeroDocumento}</div>
+                    <div className="text-gray-500 text-xs">{customer.direccion}</div>
+                  </div>
+                </button>
+              ))
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCustomerResults(false);
+                  setNewCustomerName(invoiceData.cliente.razonSocial);
+                  setShowNewCustomerModal(true);
+                }}
+                className="w-full text-left px-3 py-2 hover:bg-blue-50 text-blue-600"
+              >
+                <div className="text-sm">
+                  <div className="font-medium flex items-center">
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Registrar nuevo cliente
+                  </div>
+                  <div className="text-xs text-gray-500 ml-6">
+                    "{invoiceData.cliente.razonSocial}" no encontrado
+                  </div>
+                </div>
+              </button>
+            )}
+          </div>,
+          document.body
+        )}
+
+        {/* Modal de registro de cliente */}
+        <CustomerRegistration 
+          isOpen={showNewCustomerModal}
+          onClose={() => {
+            setShowNewCustomerModal(false);
+            setNewCustomerName('');
+          }}
+          initialData={{
+            razonSocial: newCustomerName
+          }}
+          onSave={(customerData) => {
+            // Auto-completar datos del cliente en la factura
+            setInvoiceData(prev => ({
+              ...prev,
+              cliente: {
+                tipoDocumento: customerData.tipoDocumento,
+                numeroDocumento: customerData.numeroDocumento,
+                razonSocial: customerData.razonSocial,
+                direccion: customerData.direccion
+              }
+            }));
+            setShowNewCustomerModal(false);
+            setNewCustomerName('');
+          }}
+        />
+        
+        <AlertComponent />
       </div>
     </div>
   );

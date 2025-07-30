@@ -1,6 +1,8 @@
 'use client'
 import { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAlert } from './Alert';
+import ProductRegistration from './ProductRegistration';
 
 interface ProductListProps {
   isOpen: boolean;
@@ -23,14 +25,17 @@ interface Product {
 
 const ProductList = ({ isOpen, onClose }: ProductListProps) => {
   const { theme } = useTheme();
+  const { showError, showSuccess, showConfirm, AlertComponent } = useAlert();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('TODOS');
   const [filterStock, setFilterStock] = useState('TODOS');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // Datos de ejemplo
-  const allProducts: Product[] = [
+  const [products, setProducts] = useState<Product[]>([
     {
       id: '1',
       codigo: 'PROD001',
@@ -96,11 +101,11 @@ const ProductList = ({ isOpen, onClose }: ProductListProps) => {
       fechaRegistro: '2024-02-15',
       estado: 'INACTIVO'
     }
-  ];
+  ]);
 
   if (!isOpen) return null;
 
-  const filteredProducts = allProducts.filter(product => {
+  const filteredProducts = products.filter(product => {
     const matchesSearch = 
       product.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.descripcion.toLowerCase().includes(searchTerm.toLowerCase());
@@ -121,13 +126,64 @@ const ProductList = ({ isOpen, onClose }: ProductListProps) => {
   const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
 
   const handleEdit = (product: Product) => {
-    console.log('Editar producto:', product);
-    // Aquí iría la lógica para abrir el modal de edición
+    setEditingProduct(product);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = (updatedProductData: any) => {
+    if (!editingProduct) return;
+    
+    const updatedProducts = products.map(product => 
+      product.id === editingProduct.id 
+        ? { 
+            ...product, 
+            codigo: updatedProductData.codigo,
+            descripcion: updatedProductData.descripcion,
+            categoria: updatedProductData.categoria,
+            unidadMedida: updatedProductData.unidadMedida,
+            precio: updatedProductData.precio,
+            stock: updatedProductData.stock,
+            stockMinimo: updatedProductData.stockMinimo,
+            afectoIGV: updatedProductData.afectoIGV
+          }
+        : product
+    );
+    
+    setProducts(updatedProducts);
+    setShowEditModal(false);
+    setEditingProduct(null);
+    showSuccess('Producto actualizado', 'Los datos del producto se han actualizado correctamente');
+  };
+
+  const handleDelete = (product: Product) => {
+    showConfirm(
+      'Confirmar eliminación',
+      `¿Está seguro de eliminar el producto "${product.descripcion}"?`,
+      () => {
+        const updatedProducts = products.filter(p => p.id !== product.id);
+        setProducts(updatedProducts);
+        showSuccess('Producto eliminado', 'El producto se ha eliminado correctamente');
+      },
+      'Eliminar',
+      'Cancelar'
+    );
   };
 
   const handleToggleStatus = (productId: string) => {
-    console.log('Cambiar estado del producto:', productId);
-    // Aquí iría la lógica para cambiar el estado del producto
+    const updatedProducts = products.map(product => 
+      product.id === productId 
+        ? { ...product, estado: product.estado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO' as 'ACTIVO' | 'INACTIVO' }
+        : product
+    );
+    
+    const product = products.find(p => p.id === productId);
+    const newStatus = product?.estado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
+    
+    setProducts(updatedProducts);
+    showSuccess(
+      'Estado actualizado', 
+      `El producto se ha ${newStatus === 'ACTIVO' ? 'activado' : 'desactivado'} correctamente`
+    );
   };
 
   const getStockStatus = (product: Product) => {
@@ -286,7 +342,7 @@ const ProductList = ({ isOpen, onClose }: ProductListProps) => {
                           onClick={() => handleToggleStatus(product.id)}
                           className={`transition-colors ${
                             product.estado === 'ACTIVO'
-                              ? 'text-red-600 hover:text-red-900'
+                              ? 'text-orange-600 hover:text-orange-900'
                               : 'text-green-600 hover:text-green-900'
                           }`}
                           title={product.estado === 'ACTIVO' ? 'Desactivar' : 'Activar'}
@@ -300,6 +356,15 @@ const ProductList = ({ isOpen, onClose }: ProductListProps) => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
                           )}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(product)}
+                          className="text-red-600 hover:text-red-900 transition-colors"
+                          title="Eliminar producto"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
                         </button>
                       </div>
                     </td>
@@ -356,6 +421,30 @@ const ProductList = ({ isOpen, onClose }: ProductListProps) => {
             Cerrar
           </button>
         </div>
+        
+        {/* Modal de edición */}
+        {editingProduct && (
+          <ProductRegistration 
+            isOpen={showEditModal}
+            onClose={() => {
+              setShowEditModal(false);
+              setEditingProduct(null);
+            }}
+            initialData={{
+              codigo: editingProduct.codigo,
+              descripcion: editingProduct.descripcion,
+              categoria: editingProduct.categoria,
+              unidadMedida: editingProduct.unidadMedida,
+              precio: editingProduct.precio,
+              stock: editingProduct.stock,
+              stockMinimo: editingProduct.stockMinimo,
+              afectoIGV: editingProduct.afectoIGV
+            }}
+            onSave={handleSaveEdit}
+          />
+        )}
+        
+        <AlertComponent />
       </div>
     </div>
   );

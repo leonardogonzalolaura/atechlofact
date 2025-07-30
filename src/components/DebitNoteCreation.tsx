@@ -1,6 +1,8 @@
 'use client'
 import { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTax } from '../contexts/TaxContext';
+import { useAlert } from './Alert';
 
 interface DebitNoteCreationProps {
   isOpen: boolean;
@@ -9,6 +11,8 @@ interface DebitNoteCreationProps {
 
 const DebitNoteCreation = ({ isOpen, onClose }: DebitNoteCreationProps) => {
   const { theme } = useTheme();
+  const { taxConfig, calculateIGV, calculateTotal } = useTax();
+  const { showError, showSuccess, AlertComponent } = useAlert();
   const [debitNoteData, setDebitNoteData] = useState({
     serie: 'FD01',
     numero: '000001',
@@ -74,12 +78,57 @@ const DebitNoteCreation = ({ isOpen, onClose }: DebitNoteCreationProps) => {
   };
 
   const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-  const igv = subtotal * 0.18;
-  const total = subtotal + igv;
+  const igv = calculateIGV(subtotal);
+  const total = calculateTotal(subtotal);
+
+  const validateForm = () => {
+    const errors = [];
+    
+    // Validar información de la nota
+    if (!debitNoteData.serie.trim()) errors.push('Serie es requerida');
+    if (!debitNoteData.numero.trim()) errors.push('Número es requerido');
+    if (!debitNoteData.fechaEmision) errors.push('Fecha de emisión es requerida');
+    
+    // Validar documento de referencia
+    if (!debitNoteData.documentoReferencia.serie.trim()) errors.push('Serie del documento de referencia es requerida');
+    if (!debitNoteData.documentoReferencia.numero.trim()) errors.push('Número del documento de referencia es requerido');
+    if (!debitNoteData.documentoReferencia.fechaEmision) errors.push('Fecha del documento de referencia es requerida');
+    
+    // Validar motivo
+    if (!debitNoteData.motivoCargo.trim()) errors.push('Motivo del cargo es requerido');
+    
+    // Validar cliente
+    if (!debitNoteData.cliente.numeroDocumento.trim()) errors.push('Número de documento del cliente es requerido');
+    if (!debitNoteData.cliente.razonSocial.trim()) errors.push('Razón social del cliente es requerida');
+    
+    // Validar que hay al menos un item
+    if (items.length === 0) errors.push('Debe agregar al menos un cargo');
+    
+    // Validar items
+    const invalidItems = items.filter(item => 
+      !item.descripcion.trim() || item.cantidad <= 0 || item.precio <= 0
+    );
+    if (invalidItems.length > 0) {
+      errors.push('Todos los cargos deben tener descripción, cantidad y precio válidos');
+    }
+    
+    // Validar total mayor a 0
+    if (total <= 0) errors.push('El total debe ser mayor a 0');
+    
+    return errors;
+  };
 
   const handleSave = () => {
+    const errors = validateForm();
+    
+    if (errors.length > 0) {
+      showError('Errores en la nota de débito', errors);
+      return;
+    }
+    
     console.log('Guardando nota de débito...', { debitNoteData, items, total });
-    onClose();
+    showSuccess('Nota de débito generada', 'La nota de débito se ha generado correctamente');
+    setTimeout(() => onClose(), 2000);
   };
 
   return (
@@ -355,15 +404,15 @@ const DebitNoteCreation = ({ isOpen, onClose }: DebitNoteCreationProps) => {
                 <div className="w-64 space-y-2 bg-gray-50 p-4 rounded-lg">
                   <div className="flex justify-between text-sm text-gray-700 font-medium">
                     <span>Subtotal:</span>
-                    <span>{subtotal.toFixed(2)}</span>
+                    <span>{taxConfig.currencySymbol} {subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-gray-700 font-medium">
-                    <span>IGV (18%):</span>
-                    <span>{igv.toFixed(2)}</span>
+                    <span>{taxConfig.igvLabel} ({(taxConfig.igvRate * 100).toFixed(0)}%):</span>
+                    <span>{taxConfig.currencySymbol} {igv.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between font-bold text-lg border-t pt-2 text-gray-900">
                     <span>Total Cargo:</span>
-                    <span>{total.toFixed(2)}</span>
+                    <span>{taxConfig.currencySymbol} {total.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -397,6 +446,8 @@ const DebitNoteCreation = ({ isOpen, onClose }: DebitNoteCreationProps) => {
             Generar Nota de Débito
           </button>
         </div>
+        
+        <AlertComponent />
       </div>
     </div>
   );

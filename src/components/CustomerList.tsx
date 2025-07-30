@@ -1,6 +1,8 @@
 'use client'
 import { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAlert } from './Alert';
+import CustomerRegistration from './CustomerRegistration';
 
 interface CustomerListProps {
   isOpen: boolean;
@@ -22,13 +24,16 @@ interface Customer {
 
 const CustomerList = ({ isOpen, onClose }: CustomerListProps) => {
   const { theme } = useTheme();
+  const { showError, showSuccess, showConfirm, AlertComponent } = useAlert();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('TODOS');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // Datos de ejemplo
-  const allCustomers: Customer[] = [
+  const [customers, setCustomers] = useState<Customer[]>([
     {
       id: '1',
       tipoDocumento: 'RUC',
@@ -75,11 +80,11 @@ const CustomerList = ({ isOpen, onClose }: CustomerListProps) => {
       fechaRegistro: '2024-02-10',
       estado: 'INACTIVO'
     }
-  ];
+  ]);
 
   if (!isOpen) return null;
 
-  const filteredCustomers = allCustomers.filter(customer => {
+  const filteredCustomers = customers.filter(customer => {
     const matchesSearch = 
       customer.numeroDocumento.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.razonSocial.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -95,13 +100,60 @@ const CustomerList = ({ isOpen, onClose }: CustomerListProps) => {
   const paginatedCustomers = filteredCustomers.slice(startIndex, startIndex + itemsPerPage);
 
   const handleEdit = (customer: Customer) => {
-    console.log('Editar cliente:', customer);
-    // Aquí iría la lógica para abrir el modal de edición
+    setEditingCustomer(customer);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = (updatedCustomerData: any) => {
+    if (!editingCustomer) return;
+    
+    const updatedCustomers = customers.map(customer => 
+      customer.id === editingCustomer.id 
+        ? { 
+            ...customer, 
+            tipoDocumento: updatedCustomerData.tipoDocumento,
+            numeroDocumento: updatedCustomerData.numeroDocumento,
+            razonSocial: updatedCustomerData.razonSocial,
+            direccion: updatedCustomerData.direccion
+          }
+        : customer
+    );
+    
+    setCustomers(updatedCustomers);
+    setShowEditModal(false);
+    setEditingCustomer(null);
+    showSuccess('Cliente actualizado', 'Los datos del cliente se han actualizado correctamente');
+  };
+
+  const handleDelete = (customer: Customer) => {
+    showConfirm(
+      'Confirmar eliminación',
+      `¿Está seguro de eliminar al cliente "${customer.razonSocial}"?`,
+      () => {
+        const updatedCustomers = customers.filter(c => c.id !== customer.id);
+        setCustomers(updatedCustomers);
+        showSuccess('Cliente eliminado', 'El cliente se ha eliminado correctamente');
+      },
+      'Eliminar',
+      'Cancelar'
+    );
   };
 
   const handleToggleStatus = (customerId: string) => {
-    console.log('Cambiar estado del cliente:', customerId);
-    // Aquí iría la lógica para cambiar el estado del cliente
+    const updatedCustomers = customers.map(customer => 
+      customer.id === customerId 
+        ? { ...customer, estado: customer.estado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO' as 'ACTIVO' | 'INACTIVO' }
+        : customer
+    );
+    
+    const customer = customers.find(c => c.id === customerId);
+    const newStatus = customer?.estado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
+    
+    setCustomers(updatedCustomers);
+    showSuccess(
+      'Estado actualizado', 
+      `El cliente se ha ${newStatus === 'ACTIVO' ? 'activado' : 'desactivado'} correctamente`
+    );
   };
 
   return (
@@ -222,7 +274,7 @@ const CustomerList = ({ isOpen, onClose }: CustomerListProps) => {
                         onClick={() => handleToggleStatus(customer.id)}
                         className={`transition-colors ${
                           customer.estado === 'ACTIVO'
-                            ? 'text-red-600 hover:text-red-900'
+                            ? 'text-orange-600 hover:text-orange-900'
                             : 'text-green-600 hover:text-green-900'
                         }`}
                         title={customer.estado === 'ACTIVO' ? 'Desactivar' : 'Activar'}
@@ -236,6 +288,15 @@ const CustomerList = ({ isOpen, onClose }: CustomerListProps) => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
                         )}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(customer)}
+                        className="text-red-600 hover:text-red-900 transition-colors"
+                        title="Eliminar cliente"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                       </button>
                     </div>
                   </td>
@@ -291,6 +352,26 @@ const CustomerList = ({ isOpen, onClose }: CustomerListProps) => {
             Cerrar
           </button>
         </div>
+        
+        {/* Modal de edición */}
+        {editingCustomer && (
+          <CustomerRegistration 
+            isOpen={showEditModal}
+            onClose={() => {
+              setShowEditModal(false);
+              setEditingCustomer(null);
+            }}
+            initialData={{
+              razonSocial: editingCustomer.razonSocial,
+              tipoDocumento: editingCustomer.tipoDocumento,
+              numeroDocumento: editingCustomer.numeroDocumento,
+              direccion: editingCustomer.direccion
+            }}
+            onSave={handleSaveEdit}
+          />
+        )}
+        
+        <AlertComponent />
       </div>
     </div>
   );
