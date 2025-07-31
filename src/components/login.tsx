@@ -9,6 +9,7 @@ const Login = () => {
     const [rememberMe, setRememberMe] = useState(false);
     const [credentials, setCredentials] = useState({ user: '', password: '' });
     const router = useRouter();
+    console.log('URL de API:', process.env.NEXT_PUBLIC_API_BASE_URL);
 
     useEffect(() => {
         const savedCredentials = localStorage.getItem('rememberedCredentials');
