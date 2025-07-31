@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { TaxProvider } from '../contexts/TaxContext';
+import { SeriesProvider } from '../contexts/SeriesContext';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,7 +30,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <TaxProvider>
-          {children}
+          <SeriesProvider>
+            {children}
+          </SeriesProvider>
         </TaxProvider>
       </body>
     </html>

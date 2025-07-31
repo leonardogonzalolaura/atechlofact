@@ -12,14 +12,15 @@ import QuickActions from './dashboard/QuickActions';
 import RecentInvoices from './dashboard/RecentInvoices';
 import Footer from './dashboard/Footer';
 import CustomerRegistration from './CustomerRegistration';
-import InvoiceCreation from './InvoiceCreation';
-import CreditNoteCreation from './CreditNoteCreation';
-import DebitNoteCreation from './DebitNoteCreation';
-import RemissionGuideCreation from './RemissionGuideCreation';
+import InvoiceCreation from './InvoiceCreationTabs';
+import CreditNoteCreation from './CreditNoteCreationTabs';
+import DebitNoteCreation from './DebitNoteCreationTabs';
+import RemissionGuideCreation from './RemissionGuideCreationTabs';
 import ProductRegistration from './ProductRegistration';
 import CustomerList from './CustomerList';
 import ProductList from './ProductList';
 import ReportsDashboard from './ReportsDashboard';
+import InvoicePreview from './InvoicePreview';
 
 const Dashboard = () => {
     const [user, setUser] = useState('');
@@ -35,6 +36,13 @@ const Dashboard = () => {
     const [isCustomerListOpen, setIsCustomerListOpen] = useState(false);
     const [isProductListOpen, setIsProductListOpen] = useState(false);
     const [isReportsDashboardOpen, setIsReportsDashboardOpen] = useState(false);
+    const [showInvoicePreview, setShowInvoicePreview] = useState(false);
+    const [selectedInvoice, setSelectedInvoice] = useState(null);
+
+    const handlePreviewInvoice = (invoice: any) => {
+        setSelectedInvoice(invoice);
+        setShowInvoicePreview(true);
+    };
     const { theme } = useTheme();
     const router = useRouter();
 
@@ -90,7 +98,7 @@ const Dashboard = () => {
                     onCustomerListClick={() => setIsCustomerListOpen(true)}
                     onProductListClick={() => setIsProductListOpen(true)}
                 />
-                <RecentInvoices />
+                <RecentInvoices onPreviewInvoice={handlePreviewInvoice} />
             </main>
             
             <Footer />
@@ -142,6 +150,11 @@ const Dashboard = () => {
             <ReportsDashboard 
                 isOpen={isReportsDashboardOpen} 
                 onClose={() => setIsReportsDashboardOpen(false)} 
+            />
+            <InvoicePreview 
+                isOpen={showInvoicePreview}
+                onClose={() => setShowInvoicePreview(false)}
+                invoiceData={selectedInvoice}
             />
         </div>
     );

@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAlert } from './Alert';
+import { consultRUC, consultDNI } from '../utils/validators';
 
 interface CustomerRegistrationProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ interface CustomerRegistrationProps {
 const CustomerRegistration = ({ isOpen, onClose, initialData, onSave }: CustomerRegistrationProps) => {
   const { theme } = useTheme();
   const { showError, showSuccess, AlertComponent } = useAlert();
+  const [isConsulting, setIsConsulting] = useState(false);
   const [customerData, setCustomerData] = useState({
     tipoDocumento: 'RUC',
     numeroDocumento: '',
@@ -28,6 +30,51 @@ const CustomerRegistration = ({ isOpen, onClose, initialData, onSave }: Customer
     email: '',
     contacto: ''
   });
+
+  const handleDocumentConsult = async () => {
+    if (!customerData.numeroDocumento.trim()) {
+      showError('Error', 'Ingrese el número de documento');
+      return;
+    }
+
+    setIsConsulting(true);
+    
+    try {
+      if (customerData.tipoDocumento === 'RUC') {
+        const result = await consultRUC(customerData.numeroDocumento);
+        
+        if (result.success && result.data) {
+          setCustomerData(prev => ({
+            ...prev,
+            razonSocial: result.data.razonSocial || result.data.nombre || '',
+            direccion: result.data.direccion || ''
+          }));
+          showSuccess('Consulta exitosa', 'Datos obtenidos de SUNAT');
+        } else {
+          showError('Error en consulta', result.message || 'No se pudo consultar el RUC');
+        }
+      } else if (customerData.tipoDocumento === 'DNI') {
+        const result = await consultDNI(customerData.numeroDocumento);
+        
+        if (result.success && result.data) {
+          const nombreCompleto = result.data.nombreCompleto || 
+            `${result.data.apellidoPaterno || ''} ${result.data.apellidoMaterno || ''}, ${result.data.nombres || ''}`.trim();
+          
+          setCustomerData(prev => ({
+            ...prev,
+            razonSocial: nombreCompleto
+          }));
+          showSuccess('Consulta exitosa', 'Datos obtenidos de RENIEC');
+        } else {
+          showError('Error en consulta', result.message || 'No se pudo consultar el DNI');
+        }
+      }
+    } catch (error) {
+      showError('Error', 'Error de conexión al consultar documento');
+    } finally {
+      setIsConsulting(false);
+    }
+  };
 
   // Actualizar datos cuando cambie initialData
   React.useEffect(() => {
@@ -131,13 +178,32 @@ const CustomerRegistration = ({ isOpen, onClose, initialData, onSave }: Customer
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Número de Documento</label>
-                  <input
-                    type="text"
-                    value={customerData.numeroDocumento}
-                    onChange={(e) => handleInputChange('numeroDocumento', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    placeholder="Ingrese el número de documento"
-                  />
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={customerData.numeroDocumento}
+                      onChange={(e) => handleInputChange('numeroDocumento', e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      placeholder="Ingrese el número de documento"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleDocumentConsult}
+                      disabled={isConsulting || !customerData.numeroDocumento.trim() || !['RUC', 'DNI'].includes(customerData.tipoDocumento)}
+                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors text-sm font-medium"
+                      title="Consultar en SUNAT/RENIEC"
+                    >
+                      {isConsulting ? (
+                        <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

@@ -1,0 +1,35 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const dni = searchParams.get('dni');
+    
+    if (!dni) {
+      return NextResponse.json(
+        { error: 'DNI es requerido' },
+        { status: 400 }
+      );
+    }
+
+    const response = await fetch(`https://tools.apis.atechlo.com/apisunat/dni/${dni}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return NextResponse.json(data, { status: response.status });
+    }
+
+    return NextResponse.json(data);
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Error al consultar DNI' },
+      { status: 500 }
+    );
+  }
+}
