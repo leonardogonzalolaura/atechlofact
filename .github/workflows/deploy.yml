@@ -12,6 +12,8 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_API_BASE_URL: https://tools.apis.atechlo.com/apisunat  
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
