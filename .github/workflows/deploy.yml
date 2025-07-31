@@ -4,25 +4,34 @@ on:
   push:
     branches: [main]
 
-permissions:  
+permissions:
   contents: write
   pages: write
-  id-token: write 
-  
+  id-token: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      NEXT_PUBLIC_API_BASE_URL: https://tools.apis.atechlo.com/apisunat  
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install
-      - run: npm run build
-      - uses: actions/upload-pages-artifact@v3
+          
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build with environment variables
+        run: |
+          echo "NEXT_PUBLIC_API_BASE_URL=https://tools.apis.atechlo.com/apisunat" >> .env.production
+          npm run build
+          
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
           path: 'out/'
+          
       - name: Deploy
         uses: actions/deploy-pages@v4
