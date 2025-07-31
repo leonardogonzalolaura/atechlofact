@@ -5,7 +5,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.LOGIN), {
+    const response = await fetch('https://tools.apis.atechlo.com/apisunat/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
