@@ -217,7 +217,7 @@ const Alert = ({ type, title, message, isOpen, onClose, autoClose = false, durat
 // Hook para usar alertas fácilmente
 export const useAlert = () => {
   const [alert, setAlert] = useState<{
-    type: 'success' | 'error' | 'warning' | 'info';
+    type: 'success' | 'error' | 'warning' | 'info' | 'confirm';
     title: string;
     message: string | string[];
     isOpen: boolean;
