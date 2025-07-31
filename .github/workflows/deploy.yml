@@ -22,11 +22,12 @@ jobs:
           
       - name: Install dependencies
         run: npm ci
-      
-      - name: Build with environment variables
+      - name: Create .env file
         run: |
-          echo "NEXT_PUBLIC_API_BASE_URL=https://tools.apis.atechlo.com/apisunat" >> .env.production
-          npm run build
+          echo "NEXT_PUBLIC_API_BASE_URL=https://tools.apis.atechlo.com/apisunat" > .env.production
+          cat .env.production  # Verifica que se creó correctamente
+      - name: Build with environment variables
+        run: npm run build
           
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
