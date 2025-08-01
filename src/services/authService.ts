@@ -1,10 +1,41 @@
 interface LoginCredentials {
-  user: string;
+  login: string;
   password: string;
 }
 
 interface LoginResponse {
+  success: boolean;
+  message: string;
   token: string;
+  user: {
+    id: number;
+    email: string;
+    username: string;
+    subscription_plan: string;
+    is_trial: boolean;
+    trial_end_date: string;
+  };
+}
+
+interface RegisterCredentials {
+  email: string;
+  username: string;
+  password: string;
+  company_id?: number | null;
+}
+
+interface RegisterResponse {
+  success: boolean;
+  message: string;
+  data: {
+    id: number;
+    email: string;
+    username: string;
+    is_trial: boolean;
+    subscription_plan: string;
+    trial_end_date: string;
+    is_active: boolean;
+  };
 }
 
 interface ApiError {
@@ -13,18 +44,7 @@ interface ApiError {
 
 export const authService = {
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
-    // Modo test - usuario especial que no requiere validación API
-    if (credentials.user === 'test' && credentials.password === 'test123') {
-      const testToken = btoa(JSON.stringify({ id: 'test', exp: Date.now() + 86400000 }));
-      return { token: `header.${testToken}.signature` };
-    }
 
-    // Si estamos en modo estático (GitHub Pages), solo permitir test
-    /**
-    if (typeof window !== 'undefined' && window.location.hostname.includes('github.io')) {
-      throw new Error('Solo se permite el usuario test en GitHub Pages');
-    }
-      */
     // Modo servidor - usar API externa directamente
     try {
       const response = await fetch('https://tools.apis.atechlo.com/apisunat/login', {
@@ -70,6 +90,31 @@ export const authService = {
       return payload.id;
     } catch {
       return null;
+    }
+  },
+
+  async register(credentials: RegisterCredentials): Promise<RegisterResponse> {
+    try {
+      const response = await fetch('https://tools.apis.atechlo.com/apisunat/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Error en el registro');
+      }
+
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Error de conexión');
     }
   }
 };

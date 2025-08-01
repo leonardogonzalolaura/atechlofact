@@ -2,12 +2,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '../services/authService';
+import Register from './Register';
 
 const Login = () => {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
     const [credentials, setCredentials] = useState({ user: '', password: '' });
+    const [showRegister, setShowRegister] = useState(false);
     const router = useRouter();
     console.log('URL de API:', process.env.NEXT_PUBLIC_API_BASE_URL);
 
@@ -47,8 +49,12 @@ const Login = () => {
         }
     };
 
+    if (showRegister) {
+        return <Register onBackToLogin={() => setShowRegister(false)} />;
+    }
+
     return (
-        <div className="max-w-md w-full mx-auto bg-white p-8 rounded-xl shadow-2xl animate-fade-in-scale" style={{transform: 'scale(0.9)', transformOrigin: 'center'}}>
+        <div className="max-w-md w-full mx-auto bg-white p-8 rounded-xl shadow-2xl animate-fade-in-scale" style={{transform: 'scale(0.8)', transformOrigin: 'center'}}>
             <h1 className="text-4xl font-bold text-center mb-12 text-gray-800">Login</h1>
             
             {error && (
@@ -124,6 +130,12 @@ const Login = () => {
                 </button>
             </form>
             <div className="mt-8 text-center space-y-3">
+                <button 
+                    onClick={() => setShowRegister(true)}
+                    className="block w-full text-green-600 hover:text-green-800 transition-colors duration-200 font-medium hover:underline"
+                >
+                    ¿No tienes cuenta? Regístrate aquí
+                </button>
                 <a href="/forgot-password" className="block text-blue-600 hover:text-blue-800 transition-colors duration-200 font-medium hover:underline">Forgot password?</a>
                 
                 <div className="border-t border-gray-200 mt-6 pt-6">
