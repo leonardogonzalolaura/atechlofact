@@ -1,8 +1,8 @@
 'use client'
 import React, { useState } from 'react';
-import { useTheme } from '../contexts/ThemeContext';
-import { useAlert } from './Alert';
-import { consultRUC, consultDNI } from '../utils/validators';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useAlert } from '../Alert';
+import { consultRUC, consultDNI } from '../../utils/validators';
 
 interface CustomerRegistrationProps {
   isOpen: boolean;

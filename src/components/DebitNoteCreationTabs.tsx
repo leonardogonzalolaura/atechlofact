@@ -178,7 +178,7 @@ const DebitNoteCreation = ({ isOpen, onClose }: DebitNoteCreationProps) => {
     if (inputElement) {
       const rect = inputElement.getBoundingClientRect();
       setDropdownPosition({
-        top: rect.bottom + window.scrollY - 160,
+        top: rect.bottom + window.scrollY,
         left: rect.left + window.scrollX,
         width: Math.max(rect.width, 300)
       });
@@ -220,7 +220,7 @@ const DebitNoteCreation = ({ isOpen, onClose }: DebitNoteCreationProps) => {
     if (inputRef) {
       const rect = inputRef.getBoundingClientRect();
       setCustomerDropdownPosition({
-        top: rect.bottom + window.scrollY - 160,
+        top: rect.bottom + window.scrollY,
         left: rect.left + window.scrollX,
         width: Math.max(rect.width, 400)
       });

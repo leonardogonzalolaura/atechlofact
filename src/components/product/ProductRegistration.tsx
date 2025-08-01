@@ -1,8 +1,8 @@
 'use client'
 import React, { useState } from 'react';
-import { useTheme } from '../contexts/ThemeContext';
-import { useTax } from '../contexts/TaxContext';
-import { useAlert } from './Alert';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useTax } from '../../contexts/TaxContext';
+import { useAlert } from '../Alert';
 
 interface ProductRegistrationProps {
   isOpen: boolean;

@@ -23,9 +23,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
         
-      - name: Prepare for static build
-        run: node scripts/build-static.js
-        
       - name: Create .env file
         run: |
           echo "NEXT_PUBLIC_API_BASE_URL=https://tools.apis.atechlo.com/apisunat" > .env.production

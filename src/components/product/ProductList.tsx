@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react';
-import { useTheme } from '../contexts/ThemeContext';
-import { useAlert } from './Alert';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useAlert } from '../Alert';
 import ProductRegistration from './ProductRegistration';
 
 interface ProductListProps {

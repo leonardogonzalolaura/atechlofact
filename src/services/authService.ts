@@ -24,9 +24,9 @@ export const authService = {
       throw new Error('Solo se permite el usuario test en GitHub Pages');
     }
 
-    // Modo servidor - usar API real
+    // Modo servidor - usar API externa directamente
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch('https://tools.apis.atechlo.com/apisunat/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

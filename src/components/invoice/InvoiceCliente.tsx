@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import CustomerRegistration from '../CustomerRegistration';
+import CustomerRegistration from '../customer/CustomerRegistration';
 
 interface InvoiceClienteProps {
   invoiceData: any;

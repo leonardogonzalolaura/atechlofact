@@ -11,14 +11,14 @@ import StatsCards from './dashboard/StatsCards';
 import QuickActions from './dashboard/QuickActions';
 import RecentInvoices from './dashboard/RecentInvoices';
 import Footer from './dashboard/Footer';
-import CustomerRegistration from './CustomerRegistration';
+import CustomerRegistration from './customer/CustomerRegistration';
 import InvoiceCreation from './InvoiceCreationTabs';
 import CreditNoteCreation from './CreditNoteCreationTabs';
 import DebitNoteCreation from './DebitNoteCreationTabs';
 import RemissionGuideCreation from './RemissionGuideCreationTabs';
-import ProductRegistration from './ProductRegistration';
-import CustomerList from './CustomerList';
-import ProductList from './ProductList';
+import ProductRegistration from './product/ProductRegistration';
+import CustomerList from './customer/CustomerList';
+import ProductList from './product/ProductList';
 import ReportsDashboard from './ReportsDashboard';
 import { InvoicePreview } from './invoice';
 
