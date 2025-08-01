@@ -16,9 +16,11 @@ interface AlertProps {
 
 const Alert = ({ type, title, message, isOpen, onClose, autoClose = false, duration = 5000, onConfirm, confirmText = 'Confirmar', cancelText = 'Cancelar' }: AlertProps) => {
   const [isVisible, setIsVisible] = useState(false);
+  const [shouldRender, setShouldRender] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
+      setShouldRender(true);
       setIsVisible(true);
       if (autoClose) {
         const timer = setTimeout(() => {
@@ -26,17 +28,20 @@ const Alert = ({ type, title, message, isOpen, onClose, autoClose = false, durat
         }, duration);
         return () => clearTimeout(timer);
       }
+    } else {
+      setIsVisible(false);
+      const timer = setTimeout(() => {
+        setShouldRender(false);
+      }, 150);
+      return () => clearTimeout(timer);
     }
   }, [isOpen, autoClose, duration]);
 
   const handleClose = () => {
-    setIsVisible(false);
-    setTimeout(() => {
-      onClose();
-    }, 300);
+    onClose();
   };
 
-  if (!isOpen) return null;
+  if (!shouldRender) return null;
 
   const getAlertStyles = () => {
     switch (type) {

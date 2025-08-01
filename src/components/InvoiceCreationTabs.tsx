@@ -110,12 +110,16 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
     }
   }, [isOpen]);
 
-  // Función para resetear el formulario
+  // Función para resetear el formulario manteniendo serie y generando siguiente número
   const resetForm = () => {
+    const tipoSerie = invoiceData.tipoComprobante === 'FACTURA' ? 'facturas' : 'boletas';
+    const numeroCompleto = getNextNumber(tipoSerie as any);
+    const [serie, numero] = numeroCompleto.split('-');
+    
     setInvoiceData({
-      tipoComprobante: 'FACTURA',
-      serie: '',
-      numero: '',
+      tipoComprobante: invoiceData.tipoComprobante,
+      serie,
+      numero,
       fechaEmision: new Date().toISOString().split('T')[0],
       fechaVencimiento: '',
       cliente: {
@@ -334,12 +338,10 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
         observaciones: invoiceData.observaciones
       }, companyData);
       
-      showSuccess('Factura generada', 'La factura se ha generado y descargado correctamente');
+      showSuccess('Factura generada', 'La factura se ha guardado y descargado correctamente');
       
-      // Resetear formulario después de guardar
-      setTimeout(() => {
-        resetForm();
-      }, 1500);
+      // Resetear formulario después de guardar sin timeout para evitar re-renders
+      resetForm();
       
     } catch (error) {
       showError('Error al generar PDF', 'No se pudo generar el archivo PDF');

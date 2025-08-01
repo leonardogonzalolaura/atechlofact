@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTax } from '../../contexts/TaxContext';
+import { getAmountInWords } from '../../utils/numberToWords';
 
 interface InvoiceItem {
   id: string;
@@ -58,7 +59,12 @@ const InvoiceItems = ({
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center mb-4 pb-4 border-b bg-white sticky top-0 z-10">
-        <h3 className="text-lg font-semibold text-gray-900">Detalle de Items</h3>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Detalle de Items</h3>
+          <div className="text-sm text-gray-600 font-medium">
+            {items.length} producto{items.length !== 1 ? 's' : ''} ingresado{items.length !== 1 ? 's' : ''}
+          </div>
+        </div>
         <div className="flex items-center space-x-3">
           <div className="bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
             <div className="text-xs text-blue-600 font-medium">TOTAL</div>
@@ -127,12 +133,12 @@ const InvoiceItems = ({
                             selectProductFromSearch(searchResults[0], item.id);
                           }
                         } else if (e.key === 'Escape') {
-                          setShowSearchResults(prev => ({ ...prev, [item.id]: false }));
+                          setShowSearchResults({ ...showSearchResults, [item.id]: false });
                         }
                       }}
                       onBlur={() => {
                         setTimeout(() => {
-                          setShowSearchResults(prev => ({ ...prev, [item.id]: false }));
+                          setShowSearchResults({ ...showSearchResults, [item.id]: false });
                         }, 150);
                       }}
                       className="w-full px-2 py-2 pr-8 border border-gray-300 rounded text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -155,7 +161,7 @@ const InvoiceItems = ({
                     onChange={(e) => updateItem(item.id, 'cantidad', parseFloat(e.target.value) || 0)}
                     className="w-full px-2 py-2 border border-gray-300 rounded text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     min="0"
-                    step="0.01"
+                    step="1"
                   />
                 </td>
                 <td className="py-3 px-3">
@@ -165,7 +171,7 @@ const InvoiceItems = ({
                     onChange={(e) => updateItem(item.id, 'precio', parseFloat(e.target.value) || 0)}
                     className="w-full px-2 py-2 border border-gray-300 rounded text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     min="0"
-                    step="0.01"
+                    step="1"
                   />
                 </td>
                 <td className="py-3 px-3 text-sm font-medium text-gray-900">
@@ -188,9 +194,16 @@ const InvoiceItems = ({
         </table>
       </div>
 
+
       {/* Totales fijos */}
       <div className="mt-4 pt-4 border-t bg-white sticky bottom-0">
+
         <div className="flex justify-end">
+          {/* Monto en letras */}
+          <div className="text-xs font-bold text-gray-700 pl-2 pr-2 pt-1 pb-1 text-left w-full">
+            SON: {getAmountInWords(total, 'PEN')}
+          </div>
+
           <div className="w-80 space-y-2 bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
             <div className="flex justify-between text-sm text-gray-700 font-medium">
               <span>Subtotal:</span>

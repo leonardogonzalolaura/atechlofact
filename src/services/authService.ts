@@ -13,6 +13,12 @@ interface ApiError {
 
 export const authService = {
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
+    // Modo test - usuario especial que no requiere validación API
+    if (credentials.user === 'test' && credentials.password === 'test123') {
+      const testToken = btoa(JSON.stringify({ id: 'test', exp: Date.now() + 86400000 }));
+      return { token: `header.${testToken}.signature` };
+    }
+
     const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: {
