@@ -20,10 +20,11 @@ export const authService = {
     }
 
     // Si estamos en modo estático (GitHub Pages), solo permitir test
+    /**
     if (typeof window !== 'undefined' && window.location.hostname.includes('github.io')) {
       throw new Error('Solo se permite el usuario test en GitHub Pages');
     }
-
+      */
     // Modo servidor - usar API externa directamente
     try {
       const response = await fetch('https://tools.apis.atechlo.com/apisunat/login', {
