@@ -122,12 +122,12 @@ const RemissionGuideItems = ({
                             selectProductFromSearch(searchResults[0], item.id);
                           }
                         } else if (e.key === 'Escape') {
-                          setShowSearchResults(prev => ({ ...prev, [item.id]: false }));
+                          setShowSearchResults({ ...showSearchResults, [item.id]: false });
                         }
                       }}
                       onBlur={() => {
                         setTimeout(() => {
-                          setShowSearchResults(prev => ({ ...prev, [item.id]: false }));
+                          setShowSearchResults({ ...showSearchResults, [item.id]: false });
                         }, 150);
                       }}
                       className="w-full px-2 py-2 pr-8 border border-gray-300 rounded text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
