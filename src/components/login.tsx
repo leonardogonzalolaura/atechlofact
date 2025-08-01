@@ -48,7 +48,7 @@ const Login = () => {
     };
 
     return (
-        <div className="max-w-xl w-full mx-auto bg-white p-16 rounded-xl shadow-2xl animate-fade-in-scale">
+        <div className="max-w-md w-full mx-auto bg-white p-8 rounded-xl shadow-2xl animate-fade-in-scale" style={{transform: 'scale(0.7)', transformOrigin: 'center'}}>
             <h1 className="text-4xl font-bold text-center mb-12 text-gray-800">Login</h1>
             
             {error && (
