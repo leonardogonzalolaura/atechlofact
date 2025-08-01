@@ -176,15 +176,15 @@ const InvoiceCliente = ({
           razonSocial: newCustomerName
         }}
         onSave={(customerData) => {
-          setInvoiceData(prev => ({
-            ...prev,
+          setInvoiceData({
+            ...invoiceData,
             cliente: {
               tipoDocumento: customerData.tipoDocumento,
               numeroDocumento: customerData.numeroDocumento,
               razonSocial: customerData.razonSocial,
               direccion: customerData.direccion
             }
-          }));
+          });
           setShowNewCustomerModal(false);
           setNewCustomerName('');
         }}
