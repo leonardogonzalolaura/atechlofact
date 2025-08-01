@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTax } from '../contexts/TaxContext';
+import { useCompany } from '../contexts/CompanyContext';
 
 interface SettingsProps {
   isOpen: boolean;
@@ -11,15 +12,10 @@ interface SettingsProps {
 const Settings = ({ isOpen, onClose }: SettingsProps) => {
   const { theme } = useTheme();
   const { taxConfig, updateTaxConfig } = useTax();
+  const { companyData, updateCompanyData } = useCompany();
   const [activeTab, setActiveTab] = useState('company');
-
-  const [companyData, setCompanyData] = useState({
-    ruc: '20123456789',
-    razonSocial: 'Mi Empresa S.A.C.',
-    direccion: 'Av. Principal 123, Lima',
-    telefono: '01-234-5678',
-    email: 'contacto@miempresa.com'
-  });
+  const [localCompanyData, setLocalCompanyData] = useState(companyData);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
 
   const [billingConfig, setBillingConfig] = useState({
     serieFactura: 'F001',
@@ -31,23 +27,41 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
 
   // Cargar configuración desde localStorage al abrir
   React.useEffect(() => {
-    if (isOpen && typeof window !== 'undefined') {
-      const stored = localStorage.getItem('billingConfig');
-      if (stored) {
-        const config = JSON.parse(stored);
-        setBillingConfig(prev => ({ ...prev, ...config }));
+    if (isOpen) {
+      setLocalCompanyData(companyData);
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('billingConfig');
+        if (stored) {
+          const config = JSON.parse(stored);
+          setBillingConfig(prev => ({ ...prev, ...config }));
+        }
       }
     }
-  }, [isOpen]);
+  }, [isOpen, companyData]);
 
   if (!isOpen) return null;
 
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setLogoFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setLocalCompanyData(prev => ({ ...prev, logo: result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSave = () => {
-    console.log('Guardando configuración...', { companyData, billingConfig });
+    console.log('Guardando configuración...', { localCompanyData, billingConfig });
+    
+    // Actualizar contexto de empresa
+    updateCompanyData(localCompanyData);
     
     // Guardar en localStorage
     if (typeof window !== 'undefined') {
-      localStorage.setItem('companyData', JSON.stringify(companyData));
       localStorage.setItem('billingConfig', JSON.stringify(billingConfig));
       
       // Actualizar contexto de impuestos
@@ -117,51 +131,67 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
             {activeTab === 'company' && (
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-900">Información de la Empresa</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">RUC</label>
-                    <input
-                      type="text"
-                      value={companyData.ruc}
-                      onChange={(e) => setCompanyData({...companyData, ruc: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Logo de la Empresa</label>
+                    <div className="flex items-center space-x-4">
+                      {localCompanyData.logo && (
+                        <img src={localCompanyData.logo} alt="Logo" className="w-16 h-16 object-contain border rounded" />
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoChange}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Razón Social</label>
-                    <input
-                      type="text"
-                      value={companyData.razonSocial}
-                      onChange={(e) => setCompanyData({...companyData, razonSocial: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Dirección</label>
-                    <input
-                      type="text"
-                      value={companyData.direccion}
-                      onChange={(e) => setCompanyData({...companyData, direccion: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Teléfono</label>
-                    <input
-                      type="text"
-                      value={companyData.telefono}
-                      onChange={(e) => setCompanyData({...companyData, telefono: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                    <input
-                      type="email"
-                      value={companyData.email}
-                      onChange={(e) => setCompanyData({...companyData, email: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">RUC</label>
+                      <input
+                        type="text"
+                        value={localCompanyData.ruc}
+                        onChange={(e) => setLocalCompanyData({...localCompanyData, ruc: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Razón Social</label>
+                      <input
+                        type="text"
+                        value={localCompanyData.razonSocial}
+                        onChange={(e) => setLocalCompanyData({...localCompanyData, razonSocial: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Dirección</label>
+                      <input
+                        type="text"
+                        value={localCompanyData.direccion}
+                        onChange={(e) => setLocalCompanyData({...localCompanyData, direccion: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Teléfono</label>
+                      <input
+                        type="text"
+                        value={localCompanyData.telefono}
+                        onChange={(e) => setLocalCompanyData({...localCompanyData, telefono: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                      <input
+                        type="email"
+                        value={localCompanyData.email}
+                        onChange={(e) => setLocalCompanyData({...localCompanyData, email: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

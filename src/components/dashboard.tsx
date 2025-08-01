@@ -20,7 +20,7 @@ import ProductRegistration from './ProductRegistration';
 import CustomerList from './CustomerList';
 import ProductList from './ProductList';
 import ReportsDashboard from './ReportsDashboard';
-import InvoicePreview from './InvoicePreview';
+import { InvoicePreview } from './invoice';
 
 const Dashboard = () => {
     const [user, setUser] = useState('');

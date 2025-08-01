@@ -1,9 +1,9 @@
 'use client'
 import React, { useState, useRef } from 'react';
-import { createPortal } from 'react-dom';
 
 import { useTax } from '../contexts/TaxContext';
 import { useSeries } from '../contexts/SeriesContext';
+import { useCompany } from '../contexts/CompanyContext';
 import { generateInvoicePDF } from '../utils/pdfGenerator';
 import { useAlert } from './Alert';
 import InvoiceComprobante from './invoice/InvoiceComprobante';
@@ -27,6 +27,7 @@ interface InvoiceItem {
 const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
   const { taxConfig, calculateIGV, calculateTotal } = useTax();
   const { getNextNumber } = useSeries();
+  const { companyData } = useCompany();
   const { showError, showSuccess, AlertComponent } = useAlert();
   const [activeTab, setActiveTab] = useState('comprobante');
   
@@ -182,7 +183,7 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
     if (inputElement) {
       const rect = inputElement.getBoundingClientRect();
       setDropdownPosition({
-        top: rect.bottom + window.scrollY-160,
+        top: rect.bottom + window.scrollY,
         left: rect.left + window.scrollX,
         width: Math.max(rect.width, 300)
       });
@@ -225,7 +226,7 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
     if (inputRef) {
       const rect = inputRef.getBoundingClientRect();
       setCustomerDropdownPosition({
-        top: rect.bottom + window.scrollY-160,
+        top: rect.bottom + window.scrollY,
         left: rect.left + window.scrollX,
         width: Math.max(rect.width, 400)
       });
@@ -320,14 +321,6 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
     
     // Generar PDF
     try {
-      const companyData = {
-        ruc: '20123456789',
-        razonSocial: 'Mi Empresa S.A.C.',
-        direccion: 'Av. Principal 123, Lima',
-        telefono: '01-234-5678',
-        email: 'contacto@miempresa.com'
-      };
-      
       generateInvoicePDF({
         tipoComprobante: invoiceData.tipoComprobante,
         serie: invoiceData.serie,
