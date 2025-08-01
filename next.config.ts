@@ -3,14 +3,18 @@ import type { NextConfig } from "next";
 
 const nextConfig = {
   eslint: {
-    ignoreDuringBuilds: true, // 👈 Ignora errores de ESLint durante el build
+    ignoreDuringBuilds: true,
   },
-  output: 'export', 
+  output: 'export',
+  trailingSlash: true,
+  images: {
+    unoptimized: true
+  },
   env: {
     NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://tools.apis.atechlo.com/apisunat',
   },
-  basePath: process.env.NODE_ENV === 'production' ? '/atechlofact' : '', // Cambia 'atechlofact' por tu nombre de repo
-  assetPrefix: process.env.NODE_ENV === 'production' ? '/atechlofact/' : '', // Mismo nombre aquí
+  basePath: process.env.NODE_ENV === 'production' ? '/atechlofact' : '',
+  assetPrefix: process.env.NODE_ENV === 'production' ? '/atechlofact/' : '',
 };
 
 module.exports = nextConfig;

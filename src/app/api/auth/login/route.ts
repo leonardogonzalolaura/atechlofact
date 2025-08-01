@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getApiUrl, API_CONFIG } from '../../../../config/api';
 
 export const dynamic = 'force-dynamic';
 

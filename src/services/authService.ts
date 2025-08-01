@@ -19,20 +19,33 @@ export const authService = {
       return { token: `header.${testToken}.signature` };
     }
 
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-    });
-
-    if (!response.ok) {
-      const errorData: ApiError = await response.json();
-      throw new Error(errorData.error || 'Credenciales inválidas');
+    // Si estamos en modo estático (GitHub Pages), solo permitir test
+    if (typeof window !== 'undefined' && window.location.hostname.includes('github.io')) {
+      throw new Error('Solo se permite el usuario test en GitHub Pages');
     }
 
-    return response.json();
+    // Modo servidor - usar API real
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      });
+
+      if (!response.ok) {
+        const errorData: ApiError = await response.json();
+        throw new Error(errorData.error || 'Credenciales inválidas');
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Error de conexión');
+    }
   },
 
   logout(): void {
