@@ -30,7 +30,7 @@ const Register = ({ onBackToLogin }: RegisterProps) => {
     const redirectUri = encodeURIComponent(window.location.origin + '/auth/google/callback');
     const scope = encodeURIComponent('email profile');
     
-    const googleAuthUrl = `https://accounts.google.com/oauth/authorize?client_id=${googleClientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=code&access_type=offline&prompt=consent`;
+    const googleAuthUrl = `https://accounts.google.com/oauth/authorize?client_id=${googleClientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=code`;
     
     window.location.href = googleAuthUrl;
   };
@@ -55,16 +55,16 @@ const Register = ({ onBackToLogin }: RegisterProps) => {
         company_id: null
       });
 
-      // TODO: Configurar EmailJS después
-      // try {
-      //   await emailService.sendWelcomeEmail({
-      //     email: response.data.email,
-      //     username: response.data.username,
-      //     trial_end_date: response.data.trial_end_date
-      //   });
-      // } catch (emailError) {
-      //   console.error('Error enviando email:', emailError);
-      // }
+      // Enviar email de bienvenida usando tu API
+      try {
+        await emailService.sendWelcomeEmail({
+          email: response.data.email,
+          username: response.data.username,
+          trial_end_date: response.data.trial_end_date
+        });
+      } catch (emailError) {
+        console.error('Error enviando email:', emailError);
+      }
 
       setSuccess('¡Registro exitoso! Se ha enviado un correo de bienvenida. Puedes iniciar sesión ahora.');
       
@@ -162,7 +162,8 @@ const Register = ({ onBackToLogin }: RegisterProps) => {
         </button>
       </form>
 
-      <div className="mt-4 text-center">
+      {/* TODO: Habilitar registro con Google después */}
+      {/* <div className="mt-4 text-center">
         <div className="flex items-center justify-center mb-4">
           <div className="border-t border-gray-300 flex-grow"></div>
           <span className="px-3 text-gray-500 text-sm">o</span>
@@ -182,7 +183,7 @@ const Register = ({ onBackToLogin }: RegisterProps) => {
           </svg>
           <span>Registrarse con Google</span>
         </button>
-      </div>
+      </div> */}
 
       <div className="mt-6 text-center">
         <button 
