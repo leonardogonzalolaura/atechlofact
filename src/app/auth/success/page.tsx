@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { emailService } from '../../../services/emailService';
 
 function SuccessContent() {
   const router = useRouter();
@@ -13,10 +14,27 @@ function SuccessContent() {
       // Guardar token en localStorage
       localStorage.setItem('token', token);
       
-      // Redirigir al dashboard después de un breve delay
+      // Redirigir al dashboard inmediatamente
       setTimeout(() => {
         router.push('/dashboard');
       }, 1500);
+      
+      // Enviar email de bienvenida en segundo plano (no bloqueante)
+      setTimeout(() => {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          
+          emailService.sendWelcomeEmail({
+            email: payload.email,
+            username: payload.username,
+            trial_end_date: payload.trial_end_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          }).catch(error => {
+            console.error('Error enviando email de bienvenida:', error);
+          });
+        } catch (error) {
+          console.error('Error procesando token:', error);
+        }
+      }, 100);
     } else {
       // Si no hay token, redirigir al login
       setTimeout(() => {
