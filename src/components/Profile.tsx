@@ -17,6 +17,7 @@ const Profile = ({ isOpen, onClose }: ProfileProps) => {
   const [error, setError] = useState('');
   const [showCompanyForm, setShowCompanyForm] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     if (isOpen && !profileLoaded) {
@@ -53,6 +54,7 @@ const Profile = ({ isOpen, onClose }: ProfileProps) => {
       });
       setCompanies(response.data.companies);
       setProfileLoaded(true); // Marcar como cargado
+      setImageError(false); // Resetear error de imagen
       console.log('Perfil cargado exitosamente');
     } catch (error) {
       console.error('Error cargando perfil:', error);
@@ -118,25 +120,20 @@ const Profile = ({ isOpen, onClose }: ProfileProps) => {
                       </p>
                     )}
                   </div>
-                  {userData.profile_picture ? (
+                  {userData.profile_picture && !imageError ? (
                     <img 
                       src={userData.profile_picture} 
                       alt="Profile" 
                       className="w-12 h-12 rounded-full"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling.style.display = 'flex';
-                      }}
+                      onError={() => setImageError(true)}
                     />
-                  ) : null}
-                  <div 
-                    className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center"
-                    style={{ display: userData.profile_picture ? 'none' : 'flex' }}
-                  >
-                    <svg className="w-6 h-6 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                    </svg>
-                  </div>
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center">
+                      <svg className="w-6 h-6 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                      </svg>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
