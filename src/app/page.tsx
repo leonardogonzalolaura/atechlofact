@@ -9,6 +9,13 @@ function HomeContent() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    // Debug: Mostrar todos los parámetros de la URL
+    const allParams: { [key: string]: string } = {};
+    searchParams.forEach((value, key) => {
+      allParams[key] = value;
+    });
+    console.log('SearchParams:', allParams);
+    
     // Verificar si hay token de Google OAuth en la URL
     const token = searchParams.get('token');
     if (token) {

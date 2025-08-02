@@ -8,6 +8,13 @@ function SuccessContent() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    // Debug: Mostrar todos los parámetros de la URL
+    const allParams: { [key: string]: string } = {};
+    searchParams.forEach((value, key) => {
+      allParams[key] = value;
+    });
+    console.log('SearchParams (Success):', allParams);
+    
     const token = searchParams.get('token');
     
     if (token) {
@@ -49,6 +56,7 @@ function SuccessContent() {
   }, [searchParams, router]);
 
   const token = searchParams.get('token');
+  const isNewUser = searchParams.get('isNewUser');
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -56,8 +64,14 @@ function SuccessContent() {
         {token ? (
           <>
             <div className="text-green-500 text-6xl mb-4">✅</div>
-            <h1 className="text-2xl font-bold text-gray-800 mb-4">¡Registro exitoso!</h1>
-            <p className="text-gray-600 mb-4">Te has registrado correctamente con Google.</p>
+            <h1 className="text-2xl font-bold text-gray-800 mb-4">
+              {isNewUser === 'true' ? '¡Registro exitoso!' : '¡Login exitoso!'}
+            </h1>
+            <p className="text-gray-600 mb-4">
+              {isNewUser === 'true' 
+                ? 'Te has registrado correctamente con Google.' 
+                : 'Has ingresado correctamente con Google.'}
+            </p>
             <p className="text-sm text-gray-500">Redirigiendo al dashboard...</p>
           </>
         ) : (
