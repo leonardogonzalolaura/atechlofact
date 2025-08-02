@@ -19,18 +19,23 @@ function SuccessContent() {
         router.push('/dashboard');
       }, 1500);
       
-      // Enviar email de bienvenida en segundo plano (no bloqueante)
+      // Enviar email de bienvenida solo para usuarios nuevos (no bloqueante)
       setTimeout(() => {
         try {
           const payload = JSON.parse(atob(token.split('.')[1]));
           
-          emailService.sendWelcomeEmail({
-            email: payload.email,
-            username: payload.username,
-            trial_end_date: payload.trial_end_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-          }).catch(error => {
-            console.error('Error enviando email de bienvenida:', error);
-          });
+          const isNewUser = searchParams.get('isNewUser');
+          
+          // Solo enviar email si es un usuario nuevo (registro)
+          if (isNewUser === 'true') {
+            emailService.sendWelcomeEmail({
+              email: payload.email,
+              username: payload.username,
+              trial_end_date: payload.trial_end_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            }).catch(error => {
+              console.error('Error enviando email de bienvenida:', error);
+            });
+          }
         } catch (error) {
           console.error('Error procesando token:', error);
         }
