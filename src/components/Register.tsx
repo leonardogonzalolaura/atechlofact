@@ -19,20 +19,8 @@ const Register = ({ onBackToLogin }: RegisterProps) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleGoogleRegister = () => {
-    // Configurar Google OAuth usando variable de entorno
-    const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-    
-    if (!googleClientId) {
-      setError('Google OAuth no está configurado');
-      return;
-    }
-    
-    const redirectUri = encodeURIComponent(window.location.origin + '/auth/google/callback');
-    const scope = encodeURIComponent('email profile');
-    
-    const googleAuthUrl = `https://accounts.google.com/oauth/authorize?client_id=${googleClientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=code`;
-    
-    window.location.href = googleAuthUrl;
+    // Redirigir a tu API para manejar Google OAuth
+    window.location.href = 'https://tools.apis.atechlo.com/apisunat/google/login';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -162,8 +150,7 @@ const Register = ({ onBackToLogin }: RegisterProps) => {
         </button>
       </form>
 
-      {/* TODO: Habilitar registro con Google después */}
-      {/* <div className="mt-4 text-center">
+      <div className="mt-4 text-center">
         <div className="flex items-center justify-center mb-4">
           <div className="border-t border-gray-300 flex-grow"></div>
           <span className="px-3 text-gray-500 text-sm">o</span>
@@ -183,7 +170,7 @@ const Register = ({ onBackToLogin }: RegisterProps) => {
           </svg>
           <span>Registrarse con Google</span>
         </button>
-      </div> */}
+      </div>
 
       <div className="mt-6 text-center">
         <button 
