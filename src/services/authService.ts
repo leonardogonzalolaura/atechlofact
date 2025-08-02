@@ -44,8 +44,6 @@ interface ApiError {
 
 export const authService = {
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
-
-    // Modo servidor - usar API externa directamente
     try {
       const response = await fetch('https://tools.apis.atechlo.com/apisunat/login', {
         method: 'POST',
@@ -55,12 +53,13 @@ export const authService = {
         body: JSON.stringify(credentials),
       });
 
-      if (!response.ok) {
-        const errorData: ApiError = await response.json();
-        throw new Error(errorData.error || 'Credenciales inválidas');
+      const data = await response.json();
+      
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Credenciales inválidas');
       }
 
-      return response.json();
+      return data;
     } catch (error) {
       if (error instanceof Error) {
         throw error;
@@ -87,7 +86,7 @@ export const authService = {
     
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.id;
+      return payload.username || payload.id?.toString() || null;
     } catch {
       return null;
     }

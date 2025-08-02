@@ -8,7 +8,7 @@ const Login = () => {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
-    const [credentials, setCredentials] = useState({ user: '', password: '' });
+    const [credentials, setCredentials] = useState({ login: '', password: '' });
     const [showRegister, setShowRegister] = useState(false);
     const router = useRouter();
     console.log('URL de API:', process.env.NEXT_PUBLIC_API_BASE_URL);
@@ -28,15 +28,15 @@ const Login = () => {
         setIsLoading(true);
         
         const formData = new FormData(e.target as HTMLFormElement);
-        const user = formData.get('user') as string;
+        const login = formData.get('login') as string;
         const password = formData.get('password') as string;
 
         try {
-            const data = await authService.login({ user, password });
+            const data = await authService.login({ login, password });
             localStorage.setItem('token', data.token);
             
             if (rememberMe) {
-                localStorage.setItem('rememberedCredentials', JSON.stringify({ user, password }));
+                localStorage.setItem('rememberedCredentials', JSON.stringify({ login, password }));
             } else {
                 localStorage.removeItem('rememberedCredentials');
             }
@@ -79,13 +79,13 @@ const Login = () => {
 
             <form onSubmit={handleSubmit} className="space-y-8">
                 <div className="transform transition-all duration-200 hover:scale-105">
-                    <label htmlFor="user" className="block text-sm font-semibold text-gray-700 mb-2">User</label>
+                    <label htmlFor="login" className="block text-sm font-semibold text-gray-700 mb-2">Usuario</label>
                     <input 
                         type="text" 
-                        id="user" 
-                        name="user"
-                        value={credentials.user}
-                        onChange={(e) => setCredentials({...credentials, user: e.target.value})}
+                        id="login" 
+                        name="login"
+                        value={credentials.login}
+                        onChange={(e) => setCredentials({...credentials, login: e.target.value})}
                         className="w-full px-6 py-4 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:shadow-md text-gray-900 placeholder-gray-500" 
                         required
                     />
