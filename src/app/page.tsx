@@ -2,7 +2,7 @@
 import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { emailService } from '../services/emailService';
-import Login from "../components/login"; 
+import Login from "../components/Login"; 
 
 function HomeContent() {
   const router = useRouter();

@@ -11,6 +11,7 @@ const Register = ({ onBackToLogin }: RegisterProps) => {
   const [formData, setFormData] = useState({
     email: '',
     username: '',
+    fullname: '',
     password: '',
     confirmPassword: ''
   });
@@ -39,6 +40,7 @@ const Register = ({ onBackToLogin }: RegisterProps) => {
       const response = await authService.register({
         email: formData.email,
         username: formData.username,
+        fullname: formData.fullname,
         password: formData.password,
         company_id: null
       });
@@ -60,6 +62,7 @@ const Register = ({ onBackToLogin }: RegisterProps) => {
       setFormData({
         email: '',
         username: '',
+        fullname: '',
         password: '',
         confirmPassword: ''
       });
@@ -112,6 +115,18 @@ const Register = ({ onBackToLogin }: RegisterProps) => {
             id="username" 
             value={formData.username}
             onChange={(e) => setFormData({...formData, username: e.target.value})}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" 
+            required
+          />
+        </div>
+
+        <div>
+          <label htmlFor="fullname" className="block text-sm font-semibold text-gray-700 mb-2">Nombre Completo</label>
+          <input 
+            type="text" 
+            id="fullname" 
+            value={formData.fullname}
+            onChange={(e) => setFormData({...formData, fullname: e.target.value})}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" 
             required
           />

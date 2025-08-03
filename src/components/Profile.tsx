@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { userService } from '../services/userService';
-import CompanyForm from './CompanyForm';
 
 interface ProfileProps {
   isOpen: boolean;
@@ -12,10 +11,8 @@ interface ProfileProps {
 const Profile = ({ isOpen, onClose }: ProfileProps) => {
   const { theme } = useTheme();
   const [userData, setUserData] = useState<any>(null);
-  const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showCompanyForm, setShowCompanyForm] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
@@ -37,7 +34,7 @@ const Profile = ({ isOpen, onClose }: ProfileProps) => {
       console.log('Respuesta del perfil:', response);
       setUserData({
         username: response.data.user.username,
-        fullName: response.data.user.username,
+        fullName: response.data.user.fullname || response.data.user.username,
         email: response.data.user.email,
         phone: '',
         currentPassword: '',
@@ -50,9 +47,9 @@ const Profile = ({ isOpen, onClose }: ProfileProps) => {
         subscription_plan: response.data.user.subscription_plan,
         is_trial: response.data.user.is_trial,
         trial_end_date: response.data.user.trial_end_date,
-        profile_picture: response.data.user.profile_picture
+        profile_picture: response.data.user.profile_picture,
+        auth_provider: response.data.user.auth_provider
       });
-      setCompanies(response.data.companies);
       setProfileLoaded(true); // Marcar como cargado
       setImageError(false); // Resetear error de imagen
       console.log('Perfil cargado exitosamente');
@@ -138,48 +135,6 @@ const Profile = ({ isOpen, onClose }: ProfileProps) => {
               </div>
             </div>
 
-            {/* Empresas */}
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Mis Empresas</h3>
-                <button
-                  onClick={() => setShowCompanyForm(true)}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-                >
-                  + Agregar Empresa
-                </button>
-              </div>
-              {companies.length > 0 ? (
-                <div className="space-y-3">
-                  {companies.map((company) => (
-                    <div key={company.id} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="font-medium text-gray-900">{company.name}</h4>
-                          <p className="text-sm text-gray-600">RUT: {company.rut}</p>
-                          {company.phone && <p className="text-sm text-gray-600">Tel: {company.phone}</p>}
-                          {company.address && <p className="text-sm text-gray-600">{company.address}</p>}
-                        </div>
-                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                          {company.role}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 bg-gray-50 rounded-lg">
-                  <p className="text-gray-500 mb-4">No tienes empresas registradas</p>
-                  <button
-                    onClick={() => setShowCompanyForm(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
-                  >
-                    Registrar mi primera empresa
-                  </button>
-                </div>
-              )}
-            </div>
-
             {/* Información Personal */}
             <div className="border-t pt-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Información Personal</h3>
@@ -199,8 +154,14 @@ const Profile = ({ isOpen, onClose }: ProfileProps) => {
                     type="text"
                     value={userData.fullName}
                     onChange={(e) => setUserData({...userData, fullName: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 ${
+                      userData.auth_provider !== 'manual' ? 'bg-gray-100' : ''
+                    }`}
+                    disabled={userData.auth_provider !== 'manual'}
                   />
+                  {userData.auth_provider !== 'manual' && (
+                    <p className="text-xs text-gray-500 mt-1">Este campo se gestiona a través de {userData.auth_provider}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
@@ -208,8 +169,14 @@ const Profile = ({ isOpen, onClose }: ProfileProps) => {
                     type="email"
                     value={userData.email}
                     onChange={(e) => setUserData({...userData, email: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 ${
+                      userData.auth_provider !== 'manual' ? 'bg-gray-100' : ''
+                    }`}
+                    disabled={userData.auth_provider !== 'manual'}
                   />
+                  {userData.auth_provider !== 'manual' && (
+                    <p className="text-xs text-gray-500 mt-1">Este campo se gestiona a través de {userData.auth_provider}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Teléfono</label>
@@ -223,44 +190,63 @@ const Profile = ({ isOpen, onClose }: ProfileProps) => {
               </div>
             </div>
 
-            {/* Cambiar Contraseña */}
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Cambiar Contraseña</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Contraseña Actual</label>
-                  <input
-                    type="password"
-                    value={userData.currentPassword}
-                    onChange={(e) => setUserData({...userData, currentPassword: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    placeholder="Ingrese su contraseña actual"
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Cambiar Contraseña - Solo para usuarios con registro manual */}
+            {userData.auth_provider === 'manual' && (
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Cambiar Contraseña</h3>
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Nueva Contraseña</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Contraseña Actual</label>
                     <input
                       type="password"
-                      value={userData.newPassword}
-                      onChange={(e) => setUserData({...userData, newPassword: e.target.value})}
+                      value={userData.currentPassword}
+                      onChange={(e) => setUserData({...userData, currentPassword: e.target.value})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                      placeholder="Nueva contraseña"
+                      placeholder="Ingrese su contraseña actual"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Confirmar Contraseña</label>
-                    <input
-                      type="password"
-                      value={userData.confirmPassword}
-                      onChange={(e) => setUserData({...userData, confirmPassword: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                      placeholder="Confirme la nueva contraseña"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Nueva Contraseña</label>
+                      <input
+                        type="password"
+                        value={userData.newPassword}
+                        onChange={(e) => setUserData({...userData, newPassword: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        placeholder="Nueva contraseña"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Confirmar Contraseña</label>
+                      <input
+                        type="password"
+                        value={userData.confirmPassword}
+                        onChange={(e) => setUserData({...userData, confirmPassword: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        placeholder="Confirme la nueva contraseña"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
+            
+            {/* Mensaje para usuarios OAuth */}
+            {userData.auth_provider !== 'manual' && (
+              <div className="border-t pt-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <svg className="w-5 h-5 text-blue-500 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">Autenticación con {userData.auth_provider}</p>
+                      <p className="text-sm text-blue-700">Tu contraseña se gestiona a través de {userData.auth_provider}. No es necesario cambiarla aquí.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Preferencias */}
             <div className="border-t pt-6">
@@ -334,16 +320,7 @@ const Profile = ({ isOpen, onClose }: ProfileProps) => {
           </button>
         </div>
       </div>
-      
-      <CompanyForm 
-        isOpen={showCompanyForm}
-        onClose={() => setShowCompanyForm(false)}
-        onSuccess={() => {
-          console.log('Empresa registrada - recargando perfil');
-          setProfileLoaded(false);
-          loadProfile();
-        }}
-      />
+
     </div>
   );
 };

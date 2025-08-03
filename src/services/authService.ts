@@ -20,6 +20,7 @@ interface LoginResponse {
 interface RegisterCredentials {
   email: string;
   username: string;
+  fullname: string;
   password: string;
   company_id?: number | null;
 }

@@ -2,6 +2,7 @@ interface UserProfile {
   id: number;
   email: string;
   username: string;
+  fullname: string;
   subscription_plan: string;
   is_trial: boolean;
   trial_end_date: string;

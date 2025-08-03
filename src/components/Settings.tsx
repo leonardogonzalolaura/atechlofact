@@ -1,8 +1,10 @@
 'use client'
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTax } from '../contexts/TaxContext';
 import { useCompany } from '../contexts/CompanyContext';
+import { userService } from '../services/userService';
+import CompanyForm from './CompanyForm';
 
 interface SettingsProps {
   isOpen: boolean;
@@ -16,6 +18,11 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
   const [activeTab, setActiveTab] = useState('company');
   const [localCompanyData, setLocalCompanyData] = useState(companyData);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [userData, setUserData] = useState<any>(null);
+  const [showCompanyForm, setShowCompanyForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<any>(null);
 
   const [billingConfig, setBillingConfig] = useState({
     serieFactura: 'F001',
@@ -25,10 +32,11 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
     igv: Math.round(taxConfig.igvRate * 100) // Convertir de decimal a porcentaje
   });
 
-  // Cargar configuración desde localStorage al abrir
-  React.useEffect(() => {
+  // Cargar configuración y empresas al abrir
+  useEffect(() => {
     if (isOpen) {
       setLocalCompanyData(companyData);
+      loadCompanies();
       if (typeof window !== 'undefined') {
         const stored = localStorage.getItem('billingConfig');
         if (stored) {
@@ -38,6 +46,19 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
       }
     }
   }, [isOpen, companyData]);
+
+  const loadCompanies = async () => {
+    try {
+      setLoading(true);
+      const response = await userService.getProfile();
+      setUserData(response.data.user);
+      setCompanies(response.data.companies);
+    } catch (error) {
+      console.error('Error cargando empresas:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -130,70 +151,162 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
           <div className="flex-1 p-4 sm:p-6 overflow-y-auto max-h-[calc(95vh-200px)]">
             {activeTab === 'company' && (
               <div className="space-y-6">
-                <h3 className="text-lg font-semibold text-gray-900">Información de la Empresa</h3>
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Logo de la Empresa</label>
-                    <div className="flex items-center space-x-4">
-                      {localCompanyData.logo && (
-                        <img src={localCompanyData.logo} alt="Logo" className="w-16 h-16 object-contain border rounded" />
-                      )}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleLogoChange}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">RUC</label>
-                      <input
-                        type="text"
-                        value={localCompanyData.ruc}
-                        onChange={(e) => setLocalCompanyData({...localCompanyData, ruc: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Razón Social</label>
-                      <input
-                        type="text"
-                        value={localCompanyData.razonSocial}
-                        onChange={(e) => setLocalCompanyData({...localCompanyData, razonSocial: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Dirección</label>
-                      <input
-                        type="text"
-                        value={localCompanyData.direccion}
-                        onChange={(e) => setLocalCompanyData({...localCompanyData, direccion: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Teléfono</label>
-                      <input
-                        type="text"
-                        value={localCompanyData.telefono}
-                        onChange={(e) => setLocalCompanyData({...localCompanyData, telefono: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                      <input
-                        type="email"
-                        value={localCompanyData.email}
-                        onChange={(e) => setLocalCompanyData({...localCompanyData, email: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                      />
-                    </div>
-                  </div>
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold text-gray-900">Mis Empresas</h3>
+                  {userData && (!userData.is_trial || companies.length === 0) && (
+                    <button
+                      onClick={() => setShowCompanyForm(true)}
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                    >
+                      + Agregar Empresa
+                    </button>
+                  )}
                 </div>
+                
+                {userData && userData.is_trial && companies.length >= 1 && (
+                  <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-800">
+                      <strong>Límite Trial:</strong> Solo puedes tener 1 empresa en el plan trial. Actualiza tu plan para agregar más empresas.
+                    </p>
+                  </div>
+                )}
+                
+                {loading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin text-2xl">⚙️</div>
+                  </div>
+                ) : companies.length > 0 ? (
+                  <div className="space-y-4">
+                    {companies.map((company) => (
+                      <div key={company.id} className="border border-gray-200 rounded-lg p-6 hover:border-gray-300 transition-colors">
+                        {editingCompany?.id === company.id ? (
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">RUT</label>
+                                <input
+                                  type="text"
+                                  value={editingCompany.rut}
+                                  onChange={(e) => setEditingCompany({...editingCompany, rut: e.target.value})}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                                <input
+                                  type="text"
+                                  value={editingCompany.name}
+                                  onChange={(e) => setEditingCompany({...editingCompany, name: e.target.value})}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                                <input
+                                  type="text"
+                                  value={editingCompany.phone || ''}
+                                  onChange={(e) => setEditingCompany({...editingCompany, phone: e.target.value})}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+                                <select
+                                  value={editingCompany.role}
+                                  onChange={(e) => setEditingCompany({...editingCompany, role: e.target.value})}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                >
+                                  <option value="owner">Propietario</option>
+                                  <option value="admin">Administrador</option>
+                                  <option value="accountant">Contador</option>
+                                  <option value="sales">Ventas</option>
+                                </select>
+                              </div>
+                              <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                                <input
+                                  type="text"
+                                  value={editingCompany.address || ''}
+                                  onChange={(e) => setEditingCompany({...editingCompany, address: e.target.value})}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex justify-end space-x-3 pt-4 border-t">
+                              <button
+                                onClick={() => setEditingCompany(null)}
+                                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                onClick={() => {
+                                  console.log('Guardando empresa:', editingCompany);
+                                  // TODO: Implementar API de actualización
+                                  setEditingCompany(null);
+                                  loadCompanies();
+                                }}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
+                              >
+                                Guardar
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="text-lg font-semibold text-gray-900">{company.name}</h4>
+                                <span className="bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full font-medium">
+                                  {company.role === 'owner' ? 'Propietario' : 
+                                   company.role === 'admin' ? 'Administrador' :
+                                   company.role === 'accountant' ? 'Contador' : 'Ventas'}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div>
+                                  <span className="font-medium text-gray-700">RUT:</span>
+                                  <span className="ml-2 text-gray-900">{company.rut}</span>
+                                </div>
+                                {company.phone && (
+                                  <div>
+                                    <span className="font-medium text-gray-700">Teléfono:</span>
+                                    <span className="ml-2 text-gray-900">{company.phone}</span>
+                                  </div>
+                                )}
+                                {company.address && (
+                                  <div className="md:col-span-2">
+                                    <span className="font-medium text-gray-700">Dirección:</span>
+                                    <span className="ml-2 text-gray-900">{company.address}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => setEditingCompany({...company})}
+                              className="ml-4 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Editar empresa"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg">
+                    <p className="text-gray-500 mb-4">No tienes empresas registradas</p>
+                    <button
+                      onClick={() => setShowCompanyForm(true)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
+                    >
+                      Registrar mi primera empresa
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -274,6 +387,15 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
             Guardar Cambios
           </button>
         </div>
+        
+        <CompanyForm 
+          isOpen={showCompanyForm}
+          onClose={() => setShowCompanyForm(false)}
+          onSuccess={() => {
+            console.log('Empresa registrada - recargando empresas');
+            loadCompanies();
+          }}
+        />
       </div>
     </div>
   );
