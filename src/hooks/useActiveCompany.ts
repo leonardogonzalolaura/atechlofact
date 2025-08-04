@@ -25,7 +25,10 @@ export const useActiveCompany = () => {
       console.log('Loading companies...');
       const response = await userService.getProfile();
       console.log('Profile response:', response);
-      const companiesData = response.data.companies || [];
+      const companiesData = (response.data.companies || []).map((company: any) => ({
+        ...company,
+        id: company.id.toString()
+      }));
       setCompanies(companiesData);
       
       console.log('Companies loaded:', companiesData.length);
