@@ -1,3 +1,5 @@
+import { NotificationType } from '../services/notificationTypes';
+
 export const NOTIFICATION_DEFAULTS = {
   // Core settings
   enable_desktop: true,
@@ -12,7 +14,7 @@ export const NOTIFICATION_DEFAULTS = {
   enable_system_alerts: true,
   
   // Internal config
-  persistentTypes: ['error', 'warning'] as const
+  persistentTypes: ['error', 'warning'] as NotificationType[]
 };
 
 export const getDefaultNotificationConfig = () => ({
