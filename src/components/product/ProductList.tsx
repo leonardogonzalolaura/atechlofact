@@ -126,25 +126,7 @@ const ProductList = ({ isOpen, onClose }: ProductListProps) => {
     }
   };
 
-  const handleDelete = (product: Product) => {
-    if (!activeCompany?.id) return;
-    
-    showConfirm(
-      'Confirmar eliminación',
-      `¿Está seguro de eliminar el producto "${product.descripcion}"?`,
-      async () => {
-        try {
-          await productService.deleteProduct(activeCompany.id, parseInt(product.id));
-          loadProducts();
-          showSuccess('Producto eliminado', 'El producto se ha eliminado correctamente');
-        } catch (error: any) {
-          showError('Error', [error.message || 'Error eliminando producto']);
-        }
-      },
-      'Eliminar',
-      'Cancelar'
-    );
-  };
+
 
   const handleToggleStatus = async (productId: string) => {
     if (!activeCompany?.id) return;
@@ -152,14 +134,39 @@ const ProductList = ({ isOpen, onClose }: ProductListProps) => {
     const product = products.find(p => p.id === productId);
     if (!product) return;
     
-    try {
-      await productService.updateProduct(activeCompany.id, parseInt(productId), {});
-      loadProducts();
-      const newStatus = product.estado === 'ACTIVO' ? 'desactivado' : 'activado';
-      showSuccess('Estado actualizado', `El producto se ha ${newStatus} correctamente`);
-    } catch (error: any) {
-      showError('Error', [error.message || 'Error actualizando estado']);
-    }
+    const newActiveStatus = product.estado !== 'ACTIVO';
+    const actionText = newActiveStatus ? 'activar' : 'desactivar';
+    
+    showConfirm(
+      'Confirmar cambio de estado',
+      `¿Está seguro de ${actionText} el producto "${product.descripcion}"?`,
+      async () => {
+        try {
+          await productService.updateProduct(activeCompany.id, parseInt(productId), {
+            code: product.codigo,
+            name: product.descripcion,
+            product_type: product.categoria === 'SERVICIO' ? 'service' as const : 'product' as const,
+            description: product.descripcion,
+            unit_type: product.unidadMedida,
+            price: product.precio,
+            tax_type: product.afectoIGV ? 'gravado' as const : 'exonerado' as const,
+            category: product.categoria,
+            is_active: newActiveStatus,
+            ...(product.categoria !== 'SERVICIO' && {
+              stock: product.stock,
+              min_stock: product.stockMinimo
+            })
+          });
+          loadProducts();
+          const statusText = newActiveStatus ? 'activado' : 'desactivado';
+          showSuccess('Estado actualizado', `El producto se ha ${statusText} correctamente`);
+        } catch (error: any) {
+          showError('Error', [error.message || 'Error actualizando estado']);
+        }
+      },
+      actionText.charAt(0).toUpperCase() + actionText.slice(1),
+      'Cancelar'
+    );
   };
 
   const getStockStatus = (product: Product) => {
@@ -333,15 +340,6 @@ const ProductList = ({ isOpen, onClose }: ProductListProps) => {
                             </svg>
                           )}
                         </button>
-                        <button
-                          onClick={() => handleDelete(product)}
-                          className="text-red-600 hover:text-red-900 transition-colors"
-                          title="Eliminar producto"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -407,6 +405,7 @@ const ProductList = ({ isOpen, onClose }: ProductListProps) => {
               setEditingProduct(null);
             }}
             initialData={{
+              id: editingProduct.id,
               codigo: editingProduct.codigo,
               descripcion: editingProduct.descripcion,
               categoria: editingProduct.categoria,

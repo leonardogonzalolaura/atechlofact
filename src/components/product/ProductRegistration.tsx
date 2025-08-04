@@ -10,6 +10,7 @@ interface ProductRegistrationProps {
   isOpen: boolean;
   onClose: () => void;
   initialData?: {
+    id?: string;
     codigo?: string;
     descripcion?: string;
     categoria?: string;
@@ -126,9 +127,15 @@ const ProductRegistration = ({ isOpen, onClose, initialData, onSave }: ProductRe
         })
       };
       
-      await productService.createProduct(activeCompany.id, productPayload);
+      const isEditing = initialData?.id;
       
-      showSuccess('Producto guardado', 'El producto se ha registrado correctamente');
+      if (isEditing) {
+        await productService.updateProduct(activeCompany.id, parseInt(initialData.id!), productPayload);
+        showSuccess('Producto actualizado', 'El producto se ha actualizado correctamente');
+      } else {
+        await productService.createProduct(activeCompany.id, productPayload);
+        showSuccess('Producto guardado', 'El producto se ha registrado correctamente');
+      }
       
       // Si hay callback onSave, ejecutarlo
       if (onSave) {
@@ -138,9 +145,13 @@ const ProductRegistration = ({ isOpen, onClose, initialData, onSave }: ProductRe
       // Disparar evento para recargar productos
       window.dispatchEvent(new Event('productCreated'));
       
-      onClose();
+      // Esperar un poco para que se vea el mensaje antes de cerrar
+      setTimeout(() => {
+        onClose();
+      }, 1500);
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Error al guardar el producto';
+      console.error('Error saving product:', error);
+      const errorMessage = error.message || 'Error al guardar el producto';
       showError('Error', [errorMessage]);
     } finally {
       setLoading(false);
@@ -169,7 +180,9 @@ const ProductRegistration = ({ isOpen, onClose, initialData, onSave }: ProductRe
     <div className="fixed inset-0 bg-white bg-opacity-20 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-backdrop-enter">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[95vh] flex flex-col animate-modal-enter">
         <div className="flex justify-between items-center p-4 sm:p-6 border-b">
-          <h2 className="text-lg sm:text-2xl font-semibold text-gray-900">Registro de Producto</h2>
+          <h2 className="text-lg sm:text-2xl font-semibold text-gray-900">
+            {initialData?.id ? 'Editar Producto' : 'Registro de Producto'}
+          </h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -371,7 +384,7 @@ const ProductRegistration = ({ isOpen, onClose, initialData, onSave }: ProductRe
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             )}
-            <span>{loading ? 'Guardando...' : 'Guardar Producto'}</span>
+            <span>{loading ? 'Guardando...' : (initialData?.id ? 'Actualizar Producto' : 'Guardar Producto')}</span>
           </button>
         </div>
         <AlertComponent />

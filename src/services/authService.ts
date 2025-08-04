@@ -1,51 +1,9 @@
-interface LoginCredentials {
-  login: string;
-  password: string;
-}
-
-interface LoginResponse {
-  success: boolean;
-  message: string;
-  token: string;
-  user: {
-    id: number;
-    email: string;
-    username: string;
-    subscription_plan: string;
-    is_trial: boolean;
-    trial_end_date: string;
-  };
-}
-
-interface RegisterCredentials {
-  email: string;
-  username: string;
-  fullname: string;
-  password: string;
-  company_id?: number | null;
-}
-
-interface RegisterResponse {
-  success: boolean;
-  message: string;
-  data: {
-    id: number;
-    email: string;
-    username: string;
-    is_trial: boolean;
-    subscription_plan: string;
-    trial_end_date: string;
-    is_active: boolean;
-  };
-}
-
-interface ApiError {
-  error: string;
-}
+import { withApiErrorHandling } from '../utils/apiWrapper';
+import { LoginCredentials, LoginResponse, RegisterCredentials, RegisterResponse, ApiError } from './authTypes';
 
 export const authService = {
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
-    try {
+    return withApiErrorHandling(async () => {
       const response = await fetch('https://tools.apis.atechlo.com/apisunat/login', {
         method: 'POST',
         headers: {
@@ -61,12 +19,7 @@ export const authService = {
       }
 
       return data;
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('Error de conexión');
-    }
+    });
   },
 
   logout(): void {
@@ -94,7 +47,7 @@ export const authService = {
   },
 
   async register(credentials: RegisterCredentials): Promise<RegisterResponse> {
-    try {
+    return withApiErrorHandling(async () => {
       const response = await fetch('https://tools.apis.atechlo.com/apisunat/register', {
         method: 'POST',
         headers: {
@@ -110,11 +63,6 @@ export const authService = {
       }
 
       return data;
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('Error de conexión');
-    }
+    });
   }
 };

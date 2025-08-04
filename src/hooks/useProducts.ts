@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { productService, Product, ProductFilters } from '../services/productService';
+import { productService } from '../services/productService';
+import { Product, ProductFilters } from '../services/productTypes';
 import { useCompany } from '../contexts/CompanyContext';
 
 export const useProducts = (filters?: ProductFilters) => {
