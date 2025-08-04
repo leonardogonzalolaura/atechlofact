@@ -99,23 +99,31 @@ export const userService = {
       throw new Error('No hay token de autenticación');
     }
 
-    const response = await fetch('https://tools.apis.atechlo.com/apisunat/user/profile', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    try {
+      const response = await fetch('https://tools.apis.atechlo.com/apisunat/user/profile', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        localStorage.removeItem('token');
-        throw new Error('Sesión expirada');
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          throw new Error('Sesión expirada');
+        }
+        throw new Error(`Error obteniendo perfil del usuario: ${response.status}`);
       }
-      throw new Error('Error obteniendo perfil del usuario');
-    }
 
-    return response.json();
+      return response.json();
+    } catch (error: any) {
+      console.error('Fetch error in getProfile:', error);
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Error de conexión. Verifique su conexión a internet.');
+      }
+      throw error;
+    }
   },
 
   async registerCompany(companyData: CompanyInput): Promise<CompanyResponse> {

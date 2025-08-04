@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { productService, Product, ProductFilters } from '../services/productService';
 import { useCompany } from '../contexts/CompanyContext';
 
@@ -8,7 +8,7 @@ export const useProducts = (filters?: ProductFilters) => {
   const [error, setError] = useState<string | null>(null);
   const { activeCompany } = useCompany();
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     if (!activeCompany?.id) return;
     
     try {
@@ -28,7 +28,7 @@ export const useProducts = (filters?: ProductFilters) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeCompany?.id, filters]);
 
   const searchProducts = async (searchTerm: string) => {
     if (!activeCompany?.id || searchTerm.length < 2) {

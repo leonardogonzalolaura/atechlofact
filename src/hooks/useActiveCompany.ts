@@ -22,7 +22,9 @@ export const useActiveCompany = () => {
     try {
       setLoading(true);
       setError(null);
+      console.log('Loading companies...');
       const response = await userService.getProfile();
+      console.log('Profile response:', response);
       const companiesData = response.data.companies || [];
       setCompanies(companiesData);
       
@@ -42,9 +44,9 @@ export const useActiveCompany = () => {
         localStorage.removeItem('activeCompanyId');
         console.log('No companies found');
       }
-    } catch (err) {
-      setError('Error cargando empresas');
+    } catch (err: any) {
       console.error('Error loading companies:', err);
+      setError(err.message || 'Error cargando empresas');
       setActiveCompany(null);
       setCompanies([]);
     } finally {

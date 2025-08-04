@@ -37,9 +37,11 @@ const ProductList = ({ isOpen, onClose }: ProductListProps) => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  const { activeCompany } = useCompany();
+  const { activeCompany, hasCompanies, loading: companyLoading } = useCompany();
   const { products: apiProducts, loading, loadProducts } = useProducts();
   const [products, setProducts] = useState<Product[]>([]);
+  
+  console.log('ProductList - Company state:', { activeCompany: activeCompany?.name, hasCompanies, companyLoading });
   
   // Recargar productos cuando se abre el modal
   useEffect(() => {
@@ -56,7 +58,7 @@ const ProductList = ({ isOpen, onClose }: ProductListProps) => {
       descripcion: product.name,
       categoria: product.product_type.toUpperCase(),
       unidadMedida: product.unit_type,
-      precio: product.price,
+      precio: Number(product.price) || 0,
       stock: product.stock || 0,
       stockMinimo: product.min_stock || 0,
       afectoIGV: product.tax_type === 'gravado',
@@ -273,7 +275,7 @@ const ProductList = ({ isOpen, onClose }: ProductListProps) => {
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                      S/ {product.precio.toFixed(2)}
+                      S/ {(Number(product.precio) || 0).toFixed(2)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="text-sm">
@@ -424,7 +426,21 @@ const ProductList = ({ isOpen, onClose }: ProductListProps) => {
           </div>
         )}
         
-        {!loading && products.length === 0 && (
+        {!hasCompanies && !companyLoading && (
+          <div className="flex-1 flex items-center justify-center p-8">
+            <div className="text-center max-w-md">
+              <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No hay empresas registradas</h3>
+              <p className="text-gray-500 mb-6">Primero debe registrar una empresa para poder gestionar productos.</p>
+            </div>
+          </div>
+        )}
+        
+        {hasCompanies && !loading && products.length === 0 && (
           <div className="flex-1 flex items-center justify-center p-8">
             <div className="text-center max-w-md">
               <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">

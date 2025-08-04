@@ -252,7 +252,7 @@ const InvoiceItems = ({
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-semibold text-gray-900">S/ {product.precio.toFixed(2)}</div>
+                        <div className="font-semibold text-gray-900">S/ {(Number(product.precio) || 0).toFixed(2)}</div>
                       </div>
                     </div>
                   </button>
@@ -288,7 +288,7 @@ const InvoiceItems = ({
               >
                 <div className="text-sm">
                   <div className="font-medium text-gray-900">{product.descripcion}</div>
-                  <div className="text-gray-500 text-xs">{product.codigo} • S/ {product.precio.toFixed(2)}</div>
+                  <div className="text-gray-500 text-xs">{product.codigo} • S/ {(Number(product.precio) || 0).toFixed(2)}</div>
                 </div>
               </button>
             ))}
