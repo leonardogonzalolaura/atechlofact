@@ -1,8 +1,6 @@
 import { withApiErrorHandling } from '../utils/apiWrapper';
 import { Product, ProductFilters, CreateProductData, ProductResponse, CreateProductResponse } from './productTypes';
 
-export { Product, ProductFilters, CreateProductData, ProductResponse, CreateProductResponse };
-
 export const productService = {
   async getProducts(companyId: string, filters?: ProductFilters): Promise<ProductResponse> {
     return withApiErrorHandling(async () => {

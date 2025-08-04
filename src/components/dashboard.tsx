@@ -86,10 +86,29 @@ const Dashboard = () => {
             setIsProductRegistrationOpen(true);
         };
         
+        // Listeners para notificaciones
+        const handleOpenProductList = (event: any) => {
+            const filter = event.detail?.filter;
+            checkCompanyAndOpen(() => {
+                setIsProductListOpen(true);
+                // TODO: Apply filter when ProductList opens
+            });
+        };
+        
+        const handleOpenInvoiceList = (event: any) => {
+            const filter = event.detail?.filter;
+            // TODO: Open invoice list with filter
+            console.log('Open invoice list with filter:', filter);
+        };
+        
         window.addEventListener('openProductRegistration', handleOpenProductRegistration);
+        window.addEventListener('openProductList', handleOpenProductList);
+        window.addEventListener('openInvoiceList', handleOpenInvoiceList);
         
         return () => {
             window.removeEventListener('openProductRegistration', handleOpenProductRegistration);
+            window.removeEventListener('openProductList', handleOpenProductList);
+            window.removeEventListener('openInvoiceList', handleOpenInvoiceList);
         };
     }, [router]);
 

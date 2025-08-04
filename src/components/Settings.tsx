@@ -4,6 +4,9 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useTax } from '../contexts/TaxContext';
 import { useCompany } from '../contexts/CompanyContext';
 import { userService } from '../services/userService';
+import { notificationService } from '../services/notificationService';
+import { notificationApiService } from '../services/notificationApiService';
+import { NOTIFICATION_DEFAULTS, getDefaultNotificationPreferences } from '../config/notificationDefaults';
 import CompanyForm from './CompanyForm';
 
 interface SettingsProps {
@@ -33,6 +36,17 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
     igv: Math.round(taxConfig.igvRate * 100) // Convertir de decimal a porcentaje
   });
 
+  const [notificationConfig, setNotificationConfig] = useState({
+    enableDesktop: NOTIFICATION_DEFAULTS.enable_desktop,
+    enableInApp: NOTIFICATION_DEFAULTS.enable_in_app,
+    autoCloseDelay: NOTIFICATION_DEFAULTS.auto_close_delay,
+    maxNotifications: NOTIFICATION_DEFAULTS.max_notifications,
+    enableStockAlerts: NOTIFICATION_DEFAULTS.enable_stock_alerts,
+    enableInvoiceAlerts: NOTIFICATION_DEFAULTS.enable_invoice_alerts,
+    enablePaymentAlerts: NOTIFICATION_DEFAULTS.enable_payment_alerts,
+    enableSystemAlerts: NOTIFICATION_DEFAULTS.enable_system_alerts
+  });
+
   // Cargar configuración y empresas al abrir
   useEffect(() => {
     if (isOpen) {
@@ -43,6 +57,51 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
         if (stored) {
           const config = JSON.parse(stored);
           setBillingConfig(prev => ({ ...prev, ...config }));
+        }
+        
+        // Load notification config with smart caching
+        const loadNotificationConfig = () => {
+          const notifConfig = notificationService.getConfig();
+          const storedNotifPrefs = localStorage.getItem('notificationPreferences');
+          const preferences = storedNotifPrefs ? JSON.parse(storedNotifPrefs) : getDefaultNotificationPreferences();
+          
+          return {
+            enableDesktop: notifConfig.enableDesktop,
+            enableInApp: notifConfig.enableInApp,
+            autoCloseDelay: notifConfig.autoCloseDelay,
+            maxNotifications: notifConfig.maxNotifications,
+            enableStockAlerts: preferences.enableStockAlerts,
+            enableInvoiceAlerts: preferences.enableInvoiceAlerts,
+            enablePaymentAlerts: preferences.enablePaymentAlerts,
+            enableSystemAlerts: preferences.enableSystemAlerts
+          };
+        };
+        
+        // Set initial config immediately
+        setNotificationConfig(loadNotificationConfig());
+        
+        // Check if we need to sync with backend (only if cache is old)
+        const lastConfigSync = localStorage.getItem('notificationConfigTimestamp');
+        const shouldSync = !lastConfigSync || (Date.now() - parseInt(lastConfigSync)) > 300000; // 5 minutes
+        
+        if (shouldSync) {
+          notificationApiService.getSettings()
+            .then(backendSettings => {
+              setNotificationConfig({
+                enableDesktop: backendSettings.enable_desktop,
+                enableInApp: backendSettings.enable_in_app,
+                autoCloseDelay: backendSettings.auto_close_delay,
+                maxNotifications: backendSettings.max_notifications,
+                enableStockAlerts: backendSettings.enable_stock_alerts,
+                enableInvoiceAlerts: backendSettings.enable_invoice_alerts,
+                enablePaymentAlerts: backendSettings.enable_payment_alerts,
+                enableSystemAlerts: backendSettings.enable_system_alerts
+              });
+              localStorage.setItem('notificationConfigTimestamp', Date.now().toString());
+            })
+            .catch(error => {
+              console.warn('Could not sync notification settings:', error);
+            });
         }
       }
     }
@@ -76,7 +135,7 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     console.log('Guardando configuración...', { localCompanyData, billingConfig });
     
     // Actualizar contexto de empresa
@@ -90,6 +149,33 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
       updateTaxConfig({
         igvRate: billingConfig.igv / 100 // Convertir porcentaje a decimal
       });
+      
+      // Save notification config
+      await notificationService.updateConfig({
+        enableDesktop: notificationConfig.enableDesktop,
+        enableInApp: notificationConfig.enableInApp,
+        autoCloseDelay: notificationConfig.autoCloseDelay,
+        maxNotifications: notificationConfig.maxNotifications
+      });
+      
+      // Save alert preferences to backend
+      try {
+        await notificationApiService.updateSettings({
+          enable_stock_alerts: notificationConfig.enableStockAlerts,
+          enable_invoice_alerts: notificationConfig.enableInvoiceAlerts,
+          enable_payment_alerts: notificationConfig.enablePaymentAlerts,
+          enable_system_alerts: notificationConfig.enableSystemAlerts
+        });
+      } catch (error) {
+        console.error('Error saving notification preferences:', error);
+      }
+      
+      localStorage.setItem('notificationPreferences', JSON.stringify({
+        enableStockAlerts: notificationConfig.enableStockAlerts,
+        enableInvoiceAlerts: notificationConfig.enableInvoiceAlerts,
+        enablePaymentAlerts: notificationConfig.enablePaymentAlerts,
+        enableSystemAlerts: notificationConfig.enableSystemAlerts
+      }));
       
       // Disparar evento para notificar cambios
       window.dispatchEvent(new Event('billingConfigChanged'));
@@ -144,6 +230,21 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                   <span>Facturación</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('notifications')}
+                className={`w-full text-left px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
+                  activeTab === 'notifications' 
+                    ? `${theme.colors.primary} text-white` 
+                    : 'text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  <span>Notificaciones</span>
                 </div>
               </button>
             </nav>
@@ -748,6 +849,163 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
                       </div>
                     </label>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'notifications' && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-gray-900">Configuración de Notificaciones</h3>
+                
+                {/* General Settings */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-md font-medium text-gray-900 mb-4">Configuración General</h4>
+                  <div className="space-y-4">
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={notificationConfig.enableDesktop}
+                        onChange={(e) => setNotificationConfig({...notificationConfig, enableDesktop: e.target.checked})}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <div>
+                        <span className="text-sm font-medium text-gray-700">Notificaciones de Escritorio</span>
+                        <p className="text-xs text-gray-500">Mostrar notificaciones del sistema operativo</p>
+                      </div>
+                    </label>
+                    
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={notificationConfig.enableInApp}
+                        onChange={(e) => setNotificationConfig({...notificationConfig, enableInApp: e.target.checked})}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <div>
+                        <span className="text-sm font-medium text-gray-700">Notificaciones en la Aplicación</span>
+                        <p className="text-xs text-gray-500">Mostrar notificaciones dentro del sistema</p>
+                      </div>
+                    </label>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Tiempo de Auto-cierre (ms)</label>
+                        <input
+                          type="number"
+                          value={notificationConfig.autoCloseDelay}
+                          onChange={(e) => setNotificationConfig({...notificationConfig, autoCloseDelay: parseInt(e.target.value) || 5000})}
+                          min="1000"
+                          max="30000"
+                          step="1000"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Máximo de Notificaciones</label>
+                        <input
+                          type="number"
+                          value={notificationConfig.maxNotifications}
+                          onChange={(e) => setNotificationConfig({...notificationConfig, maxNotifications: parseInt(e.target.value) || 50})}
+                          min="10"
+                          max="200"
+                          step="10"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Alert Types */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-md font-medium text-gray-900 mb-4">Tipos de Alertas</h4>
+                  <div className="space-y-4">
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={notificationConfig.enableStockAlerts}
+                        onChange={(e) => setNotificationConfig({...notificationConfig, enableStockAlerts: e.target.checked})}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <div className="flex items-center space-x-2">
+                        <span className="text-lg">⚠️</span>
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">Alertas de Stock</span>
+                          <p className="text-xs text-gray-500">Notificar cuando productos tengan stock bajo o estén agotados</p>
+                        </div>
+                      </div>
+                    </label>
+                    
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={notificationConfig.enableInvoiceAlerts}
+                        onChange={(e) => setNotificationConfig({...notificationConfig, enableInvoiceAlerts: e.target.checked})}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <div className="flex items-center space-x-2">
+                        <span className="text-lg">📄</span>
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">Alertas de Facturas</span>
+                          <p className="text-xs text-gray-500">Notificar sobre facturas creadas, vencimientos y estados</p>
+                        </div>
+                      </div>
+                    </label>
+                    
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={notificationConfig.enablePaymentAlerts}
+                        onChange={(e) => setNotificationConfig({...notificationConfig, enablePaymentAlerts: e.target.checked})}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <div className="flex items-center space-x-2">
+                        <span className="text-lg">💰</span>
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">Alertas de Pagos</span>
+                          <p className="text-xs text-gray-500">Notificar sobre pagos recibidos y pendientes</p>
+                        </div>
+                      </div>
+                    </label>
+                    
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={notificationConfig.enableSystemAlerts}
+                        onChange={(e) => setNotificationConfig({...notificationConfig, enableSystemAlerts: e.target.checked})}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <div className="flex items-center space-x-2">
+                        <span className="text-lg">⚙️</span>
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">Alertas del Sistema</span>
+                          <p className="text-xs text-gray-500">Notificar sobre actualizaciones, backups y errores del sistema</p>
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+                
+                {/* Test Notification */}
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <h4 className="text-md font-medium text-blue-900 mb-2">Probar Notificaciones</h4>
+                  <p className="text-sm text-blue-700 mb-4">Envía una notificación de prueba para verificar tu configuración</p>
+                  <button
+                    onClick={() => {
+                      notificationService.info(
+                        'Notificación de Prueba',
+                        'Esta es una notificación de prueba para verificar tu configuración',
+                        {
+                          desktopOptions: {
+                            requireInteraction: false
+                          }
+                        }
+                      );
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Enviar Notificación de Prueba
+                  </button>
                 </div>
               </div>
             )}

@@ -4,6 +4,7 @@ import "./globals.css";
 import { TaxProvider } from '../contexts/TaxContext';
 import { SeriesProvider } from '../contexts/SeriesContext';
 import { CompanyProvider } from '../contexts/CompanyContext';
+import { NotificationProvider } from '../contexts/NotificationContext';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,7 +34,9 @@ export default function RootLayout({
         <TaxProvider>
           <SeriesProvider>
             <CompanyProvider>
-              {children}
+              <NotificationProvider>
+                {children}
+              </NotificationProvider>
             </CompanyProvider>
           </SeriesProvider>
         </TaxProvider>

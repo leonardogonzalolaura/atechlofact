@@ -29,6 +29,7 @@ const ProductRegistration = ({ isOpen, onClose, initialData, onSave }: ProductRe
   const { showError, showSuccess, AlertComponent } = useAlert();
   const { activeCompany } = useCompany();
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
   const [productData, setProductData] = useState({
     codigo: initialData?.codigo || '',
     descripcion: initialData?.descripcion || '',
@@ -82,14 +83,42 @@ const ProductRegistration = ({ isOpen, onClose, initialData, onSave }: ProductRe
     const errors = [];
     
     // Validar campos obligatorios
-    if (!productData.codigo.trim()) errors.push('Código del producto es requerido');
-    if (!productData.descripcion.trim()) errors.push('Descripción es requerida');
-    if (productData.precio <= 0) errors.push('Precio debe ser mayor a 0');
+    if (!productData.codigo.trim()) {
+      errors.push('Código del producto es requerido');
+    } else if (productData.codigo.length < 3) {
+      errors.push('Código debe tener al menos 3 caracteres');
+    } else if (productData.codigo.length > 20) {
+      errors.push('Código no puede exceder 20 caracteres');
+    }
+    
+    if (!productData.descripcion.trim()) {
+      errors.push('Descripción es requerida');
+    } else if (productData.descripcion.length < 5) {
+      errors.push('Descripción debe tener al menos 5 caracteres');
+    }
+    
+    // Validar precio
+    if (productData.precio <= 0) {
+      errors.push('Precio debe ser mayor a 0');
+    } else if (productData.precio > 999999.99) {
+      errors.push('Precio no puede exceder 999,999.99');
+    } else if (!/^\d+(\.\d{1,2})?$/.test(productData.precio.toString())) {
+      errors.push('Precio puede tener máximo 2 decimales');
+    }
     
     // Validar stock para productos (no servicios)
     if (productData.categoria !== 'SERVICIO') {
-      if (productData.stock < 0) errors.push('Stock no puede ser negativo');
-      if (productData.stockMinimo < 0) errors.push('Stock mínimo no puede ser negativo');
+      if (productData.stock < 0) {
+        errors.push('Stock no puede ser negativo');
+      } else if (productData.stock > 999999) {
+        errors.push('Stock no puede exceder 999,999 unidades');
+      }
+      
+      if (productData.stockMinimo < 0) {
+        errors.push('Stock mínimo no puede ser negativo');
+      } else if (productData.stockMinimo > productData.stock) {
+        errors.push('Stock mínimo no puede ser mayor al stock actual');
+      }
     }
     
     return errors;
@@ -158,6 +187,36 @@ const ProductRegistration = ({ isOpen, onClose, initialData, onSave }: ProductRe
     }
   };
 
+  const validateField = (field: string, value: any) => {
+    let error = '';
+    
+    switch (field) {
+      case 'codigo':
+        if (!value.trim()) error = 'Código es requerido';
+        else if (value.length < 3) error = 'Mínimo 3 caracteres';
+        else if (value.length > 20) error = 'Máximo 20 caracteres';
+        break;
+      case 'descripcion':
+        if (!value.trim()) error = 'Descripción es requerida';
+        else if (value.length < 5) error = 'Mínimo 5 caracteres';
+        break;
+      case 'precio':
+        if (value <= 0) error = 'Debe ser mayor a 0';
+        else if (value > 999999.99) error = 'Máximo 999,999.99';
+        break;
+      case 'stock':
+        if (value < 0) error = 'No puede ser negativo';
+        else if (value > 999999) error = 'Máximo 999,999';
+        break;
+      case 'stockMinimo':
+        if (value < 0) error = 'No puede ser negativo';
+        else if (value > productData.stock) error = 'No puede ser mayor al stock actual';
+        break;
+    }
+    
+    return error;
+  };
+
   const handleInputChange = (field: string, value: string | number | boolean) => {
     setProductData(prev => {
       const newData = {
@@ -173,6 +232,23 @@ const ProductRegistration = ({ isOpen, onClose, initialData, onSave }: ProductRe
       }
       
       return newData;
+    });
+    
+    // Validación en tiempo real
+    const error = validateField(field, value);
+    setFieldErrors(prev => {
+      const newErrors = {
+        ...prev,
+        [field]: error
+      };
+      
+      // Si cambia el stock, revalidar stock mínimo
+      if (field === 'stock' && typeof value === 'number') {
+        const stockMinimoError = productData.stockMinimo > value ? 'No puede ser mayor al stock actual' : '';
+        newErrors.stockMinimo = stockMinimoError;
+      }
+      
+      return newErrors;
     });
   };
 
@@ -205,9 +281,14 @@ const ProductRegistration = ({ isOpen, onClose, initialData, onSave }: ProductRe
                     type="text"
                     value={productData.codigo}
                     onChange={(e) => handleInputChange('codigo', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-gray-900 ${
+                      fieldErrors.codigo ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                    }`}
                     placeholder="Código único del producto"
                   />
+                  {fieldErrors.codigo && (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.codigo}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Código SUNAT</label>
@@ -225,9 +306,14 @@ const ProductRegistration = ({ isOpen, onClose, initialData, onSave }: ProductRe
                     value={productData.descripcion}
                     onChange={(e) => handleInputChange('descripcion', e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-gray-900 ${
+                      fieldErrors.descripcion ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                    }`}
                     placeholder="Descripción detallada del producto"
                   />
+                  {fieldErrors.descripcion && (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.descripcion}</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -283,11 +369,16 @@ const ProductRegistration = ({ isOpen, onClose, initialData, onSave }: ProductRe
                     type="number"
                     value={productData.precio}
                     onChange={(e) => handleInputChange('precio', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-gray-900 ${
+                      fieldErrors.precio ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                    }`}
                     min="0"
                     step="0.01"
                     placeholder="0.00"
                   />
+                  {fieldErrors.precio && (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.precio}</p>
+                  )}
                 </div>
                 {productData.categoria === 'SERVICIO' ? (
                   <>
@@ -312,10 +403,15 @@ const ProductRegistration = ({ isOpen, onClose, initialData, onSave }: ProductRe
                         type="number"
                         value={productData.stock}
                         onChange={(e) => handleInputChange('stock', parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-gray-900 ${
+                          fieldErrors.stock ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                        }`}
                         min="0"
                         placeholder="0"
                       />
+                      {fieldErrors.stock && (
+                        <p className="mt-1 text-sm text-red-600">{fieldErrors.stock}</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Stock Mínimo</label>
@@ -323,10 +419,15 @@ const ProductRegistration = ({ isOpen, onClose, initialData, onSave }: ProductRe
                         type="number"
                         value={productData.stockMinimo}
                         onChange={(e) => handleInputChange('stockMinimo', parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-gray-900 ${
+                          fieldErrors.stockMinimo ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                        }`}
                         min="0"
                         placeholder="0"
                       />
+                      {fieldErrors.stockMinimo && (
+                        <p className="mt-1 text-sm text-red-600">{fieldErrors.stockMinimo}</p>
+                      )}
                     </div>
                   </>
                 )}

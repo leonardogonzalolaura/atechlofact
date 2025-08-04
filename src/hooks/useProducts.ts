@@ -2,12 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { productService } from '../services/productService';
 import { Product, ProductFilters } from '../services/productTypes';
 import { useCompany } from '../contexts/CompanyContext';
+import { useNotificationHelpers } from './useNotificationHelpers';
 
 export const useProducts = (filters?: ProductFilters) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { activeCompany } = useCompany();
+  const { notifyLowStock, notifyOutOfStock, clearNotificationsByType } = useNotificationHelpers();
 
   const loadProducts = useCallback(async () => {
     if (!activeCompany?.id) return;
@@ -16,7 +18,51 @@ export const useProducts = (filters?: ProductFilters) => {
       setLoading(true);
       setError(null);
       const response = await productService.getProducts(activeCompany.id, filters);
-      setProducts(response.data || []);
+      const productsData = response.data || [];
+      setProducts(productsData);
+      
+      // Check for stock alerts (only if no specific filters to avoid spam)
+      if (!filters?.search && !filters?.category) {
+        const preferences = JSON.parse(localStorage.getItem('notificationPreferences') || '{}');
+        
+        if (preferences.enableStockAlerts !== false) {
+          // Clear previous stock notifications
+          clearNotificationsByType('stock-alert');
+          clearNotificationsByType('out-of-stock');
+          
+          // Check for low stock products
+          const lowStockProducts = productsData.filter(product => 
+            product.product_type === 'product' && 
+            product.stock !== undefined && 
+            product.min_stock !== undefined &&
+            product.stock <= product.min_stock &&
+            product.stock > 0
+          ).map(p => ({
+            id: p.id.toString(),
+            name: p.name,
+            stock: p.stock || 0,
+            minStock: p.min_stock || 0
+          }));
+          
+          // Check for out of stock products
+          const outOfStockProducts = productsData.filter(product => 
+            product.product_type === 'product' && 
+            product.stock === 0
+          ).map(p => ({
+            id: p.id.toString(),
+            name: p.name
+          }));
+          
+          // Send notifications
+          if (lowStockProducts.length > 0) {
+            notifyLowStock(lowStockProducts);
+          }
+          
+          if (outOfStockProducts.length > 0) {
+            notifyOutOfStock(outOfStockProducts);
+          }
+        }
+      }
     } catch (err: any) {
       // Si es error de sesión expirada, no mostrar como error de productos
       if (err.message === 'Sesión expirada') {
