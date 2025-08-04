@@ -15,10 +15,20 @@ interface UserProfile {
 
 interface Company {
   id: number;
-  rut: string;
+  ruc: string;
   name: string;
+  business_name: string;
+  legal_representative: string;
   phone?: string;
+  email?: string;
+  website?: string;
   address?: string;
+  industry?: string;
+  tax_regime?: string;
+  currency?: string;
+  logo_url?: string;
+  sunat_user?: string;
+  sunat_password?: string;
   role: string;
   created_at: string;
 }
@@ -32,10 +42,20 @@ interface ProfileResponse {
 }
 
 interface CompanyInput {
-  rut: string;
+  ruc: string;
   name: string;
+  business_name: string;
+  legal_representative: string;
   phone?: string;
+  email?: string;
+  website?: string;
   address?: string;
+  industry?: string;
+  tax_regime?: string;
+  currency?: string;
+  logo_url?: string;
+  sunat_user?: string;
+  sunat_password?: string;
   role?: string;
 }
 
@@ -45,13 +65,30 @@ interface CompanyResponse {
   data?: {
     company: {
       id: number;
-      rut: string;
+      ruc: string;
       name: string;
       phone?: string;
       address?: string;
     };
     role: string;
   };
+}
+
+interface CompanyUpdateInput {
+  name: string;
+  business_name: string;
+  ruc: string;
+  legal_representative: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  address?: string;
+  industry?: string;
+  tax_regime?: string;
+  currency?: string;
+  logo_url?: string;
+  sunat_user?: string;
+  sunat_password?: string;
 }
 
 export const userService = {
@@ -105,6 +142,35 @@ export const userService = {
         throw new Error('Sesión expirada');
       }
       throw new Error(data.message || 'Error registrando empresa');
+    }
+
+    return data;
+  },
+
+  async updateCompany(companyId: number, companyData: CompanyUpdateInput): Promise<{ success: boolean; message: string }> {
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+      throw new Error('No hay token de autenticación');
+    }
+
+    const response = await fetch(`https://tools.apis.atechlo.com/apisunat/user/companies/${companyId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(companyData),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+        throw new Error('Sesión expirada');
+      }
+      throw new Error(data.message || 'Error actualizando empresa');
     }
 
     return data;

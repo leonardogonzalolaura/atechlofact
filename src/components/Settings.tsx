@@ -23,6 +23,7 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
   const [showCompanyForm, setShowCompanyForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [editingCompany, setEditingCompany] = useState<any>(null);
+  const [editLogoFile, setEditLogoFile] = useState<File | null>(null);
 
   const [billingConfig, setBillingConfig] = useState({
     serieFactura: 'F001',
@@ -181,22 +182,40 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
                       <div key={company.id} className="border border-gray-200 rounded-lg p-6 hover:border-gray-300 transition-colors">
                         {editingCompany?.id === company.id ? (
                           <div className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-80 overflow-y-auto">
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">RUT</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">RUC</label>
                                 <input
                                   type="text"
-                                  value={editingCompany.rut}
-                                  onChange={(e) => setEditingCompany({...editingCompany, rut: e.target.value})}
+                                  value={editingCompany.ruc || ''}
+                                  onChange={(e) => setEditingCompany({...editingCompany, ruc: e.target.value})}
                                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Comercial</label>
                                 <input
                                   type="text"
-                                  value={editingCompany.name}
+                                  value={editingCompany.name || ''}
                                   onChange={(e) => setEditingCompany({...editingCompany, name: e.target.value})}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Razón Social</label>
+                                <input
+                                  type="text"
+                                  value={editingCompany.business_name || ''}
+                                  onChange={(e) => setEditingCompany({...editingCompany, business_name: e.target.value})}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Representante Legal</label>
+                                <input
+                                  type="text"
+                                  value={editingCompany.legal_representative || ''}
+                                  onChange={(e) => setEditingCompany({...editingCompany, legal_representative: e.target.value})}
                                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                                 />
                               </div>
@@ -206,6 +225,74 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
                                   type="text"
                                   value={editingCompany.phone || ''}
                                   onChange={(e) => setEditingCompany({...editingCompany, phone: e.target.value})}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input
+                                  type="email"
+                                  value={editingCompany.email || ''}
+                                  onChange={(e) => setEditingCompany({...editingCompany, email: e.target.value})}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Sitio Web</label>
+                                <input
+                                  type="url"
+                                  value={editingCompany.website || ''}
+                                  onChange={(e) => setEditingCompany({...editingCompany, website: e.target.value})}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Industria</label>
+                                <input
+                                  type="text"
+                                  value={editingCompany.industry || ''}
+                                  onChange={(e) => setEditingCompany({...editingCompany, industry: e.target.value})}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Régimen Tributario</label>
+                                <select
+                                  value={editingCompany.tax_regime || 'general'}
+                                  onChange={(e) => setEditingCompany({...editingCompany, tax_regime: e.target.value})}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                >
+                                  <option value="general">General</option>
+                                  <option value="especial">Especial</option>
+                                  <option value="mype">MYPE</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Moneda</label>
+                                <select
+                                  value={editingCompany.currency || 'PEN'}
+                                  onChange={(e) => setEditingCompany({...editingCompany, currency: e.target.value})}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                >
+                                  <option value="PEN">Soles (PEN)</option>
+                                  <option value="USD">Dólares (USD)</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Usuario SUNAT</label>
+                                <input
+                                  type="text"
+                                  value={editingCompany.sunat_user || ''}
+                                  onChange={(e) => setEditingCompany({...editingCompany, sunat_user: e.target.value})}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña SUNAT</label>
+                                <input
+                                  type="password"
+                                  value={editingCompany.sunat_password || ''}
+                                  onChange={(e) => setEditingCompany({...editingCompany, sunat_password: e.target.value})}
                                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                                 />
                               </div>
@@ -231,6 +318,53 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
                                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                                 />
                               </div>
+                              <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Logo de la Empresa</label>
+                                <div className="space-y-3">
+                                  {(editingCompany.logo_url || editLogoFile) && (
+                                    <div className="flex items-center space-x-3">
+                                      <img 
+                                        src={editLogoFile ? URL.createObjectURL(editLogoFile) : editingCompany.logo_url} 
+                                        alt="Logo preview" 
+                                        className="w-16 h-16 object-contain border rounded"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setEditLogoFile(null);
+                                          setEditingCompany({...editingCompany, logo_url: ''});
+                                        }}
+                                        className="text-red-600 hover:text-red-800 text-sm"
+                                      >
+                                        Eliminar
+                                      </button>
+                                    </div>
+                                  )}
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        setEditLogoFile(file);
+                                        setEditingCompany({...editingCompany, logo_url: ''});
+                                      }
+                                    }}
+                                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                  />
+                                  <div className="text-center text-gray-500 text-sm">o</div>
+                                  <input
+                                    type="url"
+                                    value={editingCompany.logo_url || ''}
+                                    onChange={(e) => {
+                                      setEditingCompany({...editingCompany, logo_url: e.target.value});
+                                      setEditLogoFile(null);
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                    placeholder="O ingresa URL del logo: https://ejemplo.com/logo.png"
+                                  />
+                                </div>
+                              </div>
                             </div>
                             <div className="flex justify-end space-x-3 pt-4 border-t">
                               <button
@@ -240,15 +374,55 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
                                 Cancelar
                               </button>
                               <button
-                                onClick={() => {
-                                  console.log('Guardando empresa:', editingCompany);
-                                  // TODO: Implementar API de actualización
-                                  setEditingCompany(null);
-                                  loadCompanies();
+                                onClick={async () => {
+                                  try {
+                                    setLoading(true);
+                                    
+                                    // Si hay archivo de logo, convertir a base64
+                                    let finalEditData = { ...editingCompany };
+                                    if (editLogoFile) {
+                                      const reader = new FileReader();
+                                      const logoBase64 = await new Promise<string>((resolve) => {
+                                        reader.onload = (e) => resolve(e.target?.result as string);
+                                        reader.readAsDataURL(editLogoFile);
+                                      });
+                                      finalEditData.logo_url = logoBase64;
+                                    }
+                                    
+                                    // Preparar datos para la API (sin campos internos)
+                                    const updateData = {
+                                      name: finalEditData.name,
+                                      business_name: finalEditData.business_name,
+                                      ruc: finalEditData.ruc,
+                                      legal_representative: finalEditData.legal_representative,
+                                      phone: finalEditData.phone,
+                                      email: finalEditData.email,
+                                      website: finalEditData.website,
+                                      address: finalEditData.address,
+                                      industry: finalEditData.industry,
+                                      tax_regime: finalEditData.tax_regime,
+                                      currency: finalEditData.currency,
+                                      logo_url: finalEditData.logo_url,
+                                      sunat_user: finalEditData.sunat_user,
+                                      sunat_password: finalEditData.sunat_password
+                                    };
+                                    
+                                    await userService.updateCompany(editingCompany.id, updateData);
+                                    
+                                    setEditingCompany(null);
+                                    setEditLogoFile(null);
+                                    loadCompanies();
+                                  } catch (error) {
+                                    console.error('Error actualizando empresa:', error);
+                                    alert(error instanceof Error ? error.message : 'Error actualizando empresa');
+                                  } finally {
+                                    setLoading(false);
+                                  }
                                 }}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
+                                disabled={loading}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium disabled:opacity-50"
                               >
-                                Guardar
+                                {loading ? 'Guardando...' : 'Guardar'}
                               </button>
                             </div>
                           </div>
@@ -265,13 +439,58 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                 <div>
-                                  <span className="font-medium text-gray-700">RUT:</span>
-                                  <span className="ml-2 text-gray-900">{company.rut}</span>
+                                  <span className="font-medium text-gray-700">RUC:</span>
+                                  <span className="ml-2 text-gray-900">{company.ruc}</span>
                                 </div>
+                                {company.business_name && (
+                                  <div>
+                                    <span className="font-medium text-gray-700">Razón Social:</span>
+                                    <span className="ml-2 text-gray-900">{company.business_name}</span>
+                                  </div>
+                                )}
+                                {company.legal_representative && (
+                                  <div>
+                                    <span className="font-medium text-gray-700">Representante:</span>
+                                    <span className="ml-2 text-gray-900">{company.legal_representative}</span>
+                                  </div>
+                                )}
                                 {company.phone && (
                                   <div>
                                     <span className="font-medium text-gray-700">Teléfono:</span>
                                     <span className="ml-2 text-gray-900">{company.phone}</span>
+                                  </div>
+                                )}
+                                {company.email && (
+                                  <div>
+                                    <span className="font-medium text-gray-700">Email:</span>
+                                    <span className="ml-2 text-gray-900">{company.email}</span>
+                                  </div>
+                                )}
+                                {company.website && (
+                                  <div>
+                                    <span className="font-medium text-gray-700">Web:</span>
+                                    <a href={company.website} target="_blank" rel="noopener noreferrer" className="ml-2 text-blue-600 hover:underline">{company.website}</a>
+                                  </div>
+                                )}
+                                {company.industry && (
+                                  <div>
+                                    <span className="font-medium text-gray-700">Industria:</span>
+                                    <span className="ml-2 text-gray-900">{company.industry}</span>
+                                  </div>
+                                )}
+                                {company.tax_regime && (
+                                  <div>
+                                    <span className="font-medium text-gray-700">Régimen:</span>
+                                    <span className="ml-2 text-gray-900">
+                                      {company.tax_regime === 'general' ? 'General' :
+                                       company.tax_regime === 'especial' ? 'Especial' : 'MYPE'}
+                                    </span>
+                                  </div>
+                                )}
+                                {company.currency && (
+                                  <div>
+                                    <span className="font-medium text-gray-700">Moneda:</span>
+                                    <span className="ml-2 text-gray-900">{company.currency}</span>
                                   </div>
                                 )}
                                 {company.address && (
@@ -283,7 +502,10 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
                               </div>
                             </div>
                             <button
-                              onClick={() => setEditingCompany({...company})}
+                              onClick={() => {
+                                setEditingCompany({...company});
+                                setEditLogoFile(null);
+                              }}
                               className="ml-4 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                               title="Editar empresa"
                             >
@@ -352,7 +574,7 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
                       }}
                       min="0"
                       max="100"
-                      step="0.01"
+                      step="1"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     />
                   </div>
