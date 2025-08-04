@@ -36,6 +36,11 @@ interface InvoiceData {
 }
 
 export const generateInvoicePDF = (invoiceData: InvoiceData, companyData: CompanyData): void => {
+  // Validar que hay datos de empresa
+  if (!companyData.ruc || !companyData.razonSocial) {
+    throw new Error('No hay datos de empresa configurados');
+  }
+  
   const doc = new jsPDF();
   
   // Header - Datos de la empresa

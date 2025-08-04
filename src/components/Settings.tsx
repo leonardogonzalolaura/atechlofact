@@ -14,7 +14,7 @@ interface SettingsProps {
 const Settings = ({ isOpen, onClose }: SettingsProps) => {
   const { theme } = useTheme();
   const { taxConfig, updateTaxConfig } = useTax();
-  const { companyData, updateCompanyData } = useCompany();
+  const { companyData, updateCompanyData, reloadCompanies } = useCompany();
   const [activeTab, setActiveTab] = useState('company');
   const [localCompanyData, setLocalCompanyData] = useState(companyData);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -181,195 +181,313 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
                     {companies.map((company) => (
                       <div key={company.id} className="border border-gray-200 rounded-lg p-6 hover:border-gray-300 transition-colors">
                         {editingCompany?.id === company.id ? (
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-80 overflow-y-auto">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">RUC</label>
-                                <input
-                                  type="text"
-                                  value={editingCompany.ruc || ''}
-                                  onChange={(e) => setEditingCompany({...editingCompany, ruc: e.target.value})}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                                />
+                          <div className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-96 overflow-y-auto pr-2">
+                              <div className="space-y-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">RUC</label>
+                                <div className="relative">
+                                  <input
+                                    type="text"
+                                    value={editingCompany.ruc || ''}
+                                    onChange={(e) => setEditingCompany({...editingCompany, ruc: e.target.value})}
+                                    className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
+                                    placeholder="Ingrese RUC"
+                                  />
+                                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                  </div>
+                                </div>
                               </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Comercial</label>
-                                <input
-                                  type="text"
-                                  value={editingCompany.name || ''}
-                                  onChange={(e) => setEditingCompany({...editingCompany, name: e.target.value})}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                                />
+                              <div className="space-y-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Nombre Comercial</label>
+                                <div className="relative">
+                                  <input
+                                    type="text"
+                                    value={editingCompany.name || ''}
+                                    onChange={(e) => setEditingCompany({...editingCompany, name: e.target.value})}
+                                    className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
+                                    placeholder="Nombre comercial"
+                                  />
+                                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                    </svg>
+                                  </div>
+                                </div>
                               </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Razón Social</label>
-                                <input
-                                  type="text"
-                                  value={editingCompany.business_name || ''}
-                                  onChange={(e) => setEditingCompany({...editingCompany, business_name: e.target.value})}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                                />
+                              <div className="space-y-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Razón Social</label>
+                                <div className="relative">
+                                  <input
+                                    type="text"
+                                    value={editingCompany.business_name || ''}
+                                    onChange={(e) => setEditingCompany({...editingCompany, business_name: e.target.value})}
+                                    className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
+                                    placeholder="Razón social"
+                                  />
+                                </div>
                               </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Representante Legal</label>
-                                <input
-                                  type="text"
-                                  value={editingCompany.legal_representative || ''}
-                                  onChange={(e) => setEditingCompany({...editingCompany, legal_representative: e.target.value})}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                                />
+                              <div className="space-y-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Representante Legal</label>
+                                <div className="relative">
+                                  <input
+                                    type="text"
+                                    value={editingCompany.legal_representative || ''}
+                                    onChange={(e) => setEditingCompany({...editingCompany, legal_representative: e.target.value})}
+                                    className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
+                                    placeholder="Representante legal"
+                                  />
+                                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <svg className="h-4 w-4 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                                    </svg>
+                                  </div>
+                                </div>
                               </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                                <input
-                                  type="text"
-                                  value={editingCompany.phone || ''}
-                                  onChange={(e) => setEditingCompany({...editingCompany, phone: e.target.value})}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                                />
+                              <div className="space-y-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Teléfono</label>
+                                <div className="relative">
+                                  <input
+                                    type="text"
+                                    value={editingCompany.phone || ''}
+                                    onChange={(e) => setEditingCompany({...editingCompany, phone: e.target.value})}
+                                    className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
+                                    placeholder="Teléfono"
+                                  />
+                                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                    </svg>
+                                  </div>
+                                </div>
                               </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                <input
-                                  type="email"
-                                  value={editingCompany.email || ''}
-                                  onChange={(e) => setEditingCompany({...editingCompany, email: e.target.value})}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                                />
+                              <div className="space-y-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                                <div className="relative">
+                                  <input
+                                    type="email"
+                                    value={editingCompany.email || ''}
+                                    onChange={(e) => setEditingCompany({...editingCompany, email: e.target.value})}
+                                    className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
+                                    placeholder="email@empresa.com"
+                                  />
+                                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                                    </svg>
+                                  </div>
+                                </div>
                               </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Sitio Web</label>
-                                <input
-                                  type="url"
-                                  value={editingCompany.website || ''}
-                                  onChange={(e) => setEditingCompany({...editingCompany, website: e.target.value})}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                                />
+                              <div className="space-y-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Sitio Web</label>
+                                <div className="relative">
+                                  <input
+                                    type="url"
+                                    value={editingCompany.website || ''}
+                                    onChange={(e) => setEditingCompany({...editingCompany, website: e.target.value})}
+                                    className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
+                                    placeholder="https://empresa.com"
+                                  />
+                                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9" />
+                                    </svg>
+                                  </div>
+                                </div>
                               </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Industria</label>
-                                <input
-                                  type="text"
-                                  value={editingCompany.industry || ''}
-                                  onChange={(e) => setEditingCompany({...editingCompany, industry: e.target.value})}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                                />
+                              <div className="space-y-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Industria</label>
+                                <div className="relative">
+                                  <input
+                                    type="text"
+                                    value={editingCompany.industry || ''}
+                                    onChange={(e) => setEditingCompany({...editingCompany, industry: e.target.value})}
+                                    className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
+                                    placeholder="Sector o industria"
+                                  />
+                                </div>
                               </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Régimen Tributario</label>
-                                <select
-                                  value={editingCompany.tax_regime || 'general'}
-                                  onChange={(e) => setEditingCompany({...editingCompany, tax_regime: e.target.value})}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                                >
-                                  <option value="general">General</option>
-                                  <option value="especial">Especial</option>
-                                  <option value="mype">MYPE</option>
-                                </select>
+                              <div className="space-y-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Régimen Tributario</label>
+                                <div className="relative">
+                                  <select
+                                    value={editingCompany.tax_regime || 'general'}
+                                    onChange={(e) => setEditingCompany({...editingCompany, tax_regime: e.target.value})}
+                                    className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400 appearance-none"
+                                  >
+                                    <option value="general">General</option>
+                                    <option value="especial">Especial</option>
+                                    <option value="mype">MYPE</option>
+                                  </select>
+                                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                  </div>
+                                </div>
                               </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Moneda</label>
-                                <select
-                                  value={editingCompany.currency || 'PEN'}
-                                  onChange={(e) => setEditingCompany({...editingCompany, currency: e.target.value})}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                                >
-                                  <option value="PEN">Soles (PEN)</option>
-                                  <option value="USD">Dólares (USD)</option>
-                                </select>
+                              <div className="space-y-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Moneda</label>
+                                <div className="relative">
+                                  <select
+                                    value={editingCompany.currency || 'PEN'}
+                                    onChange={(e) => setEditingCompany({...editingCompany, currency: e.target.value})}
+                                    className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400 appearance-none"
+                                  >
+                                    <option value="PEN">Soles (PEN)</option>
+                                    <option value="USD">Dólares (USD)</option>
+                                  </select>
+                                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                  </div>
+                                </div>
                               </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Usuario SUNAT</label>
-                                <input
-                                  type="text"
-                                  value={editingCompany.sunat_user || ''}
-                                  onChange={(e) => setEditingCompany({...editingCompany, sunat_user: e.target.value})}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                                />
+                              <div className="space-y-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Usuario SUNAT</label>
+                                <div className="relative">
+                                  <input
+                                    type="text"
+                                    value={editingCompany.sunat_user || ''}
+                                    onChange={(e) => setEditingCompany({...editingCompany, sunat_user: e.target.value})}
+                                    className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
+                                    placeholder="Usuario SUNAT"
+                                  />
+                                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <svg className="h-4 w-4 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                                    </svg>
+                                  </div>
+                                </div>
                               </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña SUNAT</label>
-                                <input
-                                  type="password"
-                                  value={editingCompany.sunat_password || ''}
-                                  onChange={(e) => setEditingCompany({...editingCompany, sunat_password: e.target.value})}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                                />
+                              <div className="space-y-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Contraseña SUNAT</label>
+                                <div className="relative">
+                                  <input
+                                    type="password"
+                                    value={editingCompany.sunat_password || ''}
+                                    onChange={(e) => setEditingCompany({...editingCompany, sunat_password: e.target.value})}
+                                    className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
+                                    placeholder="Contraseña SUNAT"
+                                  />
+                                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                  </div>
+                                </div>
                               </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
-                                <select
-                                  value={editingCompany.role}
-                                  onChange={(e) => setEditingCompany({...editingCompany, role: e.target.value})}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                                >
-                                  <option value="owner">Propietario</option>
-                                  <option value="admin">Administrador</option>
-                                  <option value="accountant">Contador</option>
-                                  <option value="sales">Ventas</option>
-                                </select>
+                              <div className="space-y-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Rol</label>
+                                <div className="relative">
+                                  <select
+                                    value={editingCompany.role}
+                                    onChange={(e) => setEditingCompany({...editingCompany, role: e.target.value})}
+                                    className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400 appearance-none"
+                                  >
+                                    <option value="owner">Propietario</option>
+                                    <option value="admin">Administrador</option>
+                                    <option value="accountant">Contador</option>
+                                    <option value="sales">Ventas</option>
+                                  </select>
+                                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                  </div>
+                                </div>
                               </div>
-                              <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
-                                <input
-                                  type="text"
-                                  value={editingCompany.address || ''}
-                                  onChange={(e) => setEditingCompany({...editingCompany, address: e.target.value})}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                                />
+                              <div className="md:col-span-2 space-y-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Dirección</label>
+                                <div className="relative">
+                                  <input
+                                    type="text"
+                                    value={editingCompany.address || ''}
+                                    onChange={(e) => setEditingCompany({...editingCompany, address: e.target.value})}
+                                    className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
+                                    placeholder="Dirección completa"
+                                  />
+                                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                  </div>
+                                </div>
                               </div>
-                              <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Logo de la Empresa</label>
-                                <div className="space-y-3">
+                              <div className="md:col-span-2 space-y-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Logo de la Empresa</label>
+                                <div className="space-y-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
                                   {(editingCompany.logo_url || editLogoFile) && (
-                                    <div className="flex items-center space-x-3">
+                                    <div className="flex items-center space-x-4 p-3 bg-white rounded-lg border">
                                       <img 
                                         src={editLogoFile ? URL.createObjectURL(editLogoFile) : editingCompany.logo_url} 
                                         alt="Logo preview" 
-                                        className="w-16 h-16 object-contain border rounded"
+                                        className="w-16 h-16 object-contain border rounded-lg"
                                       />
+                                      <div className="flex-1">
+                                        <p className="text-sm font-medium text-gray-900">Logo actual</p>
+                                        <p className="text-xs text-gray-500">Vista previa del logo</p>
+                                      </div>
                                       <button
                                         type="button"
                                         onClick={() => {
                                           setEditLogoFile(null);
                                           setEditingCompany({...editingCompany, logo_url: ''});
                                         }}
-                                        className="text-red-600 hover:text-red-800 text-sm"
+                                        className="text-red-600 hover:text-red-800 text-sm font-medium px-3 py-1 rounded-lg hover:bg-red-50 transition-colors"
                                       >
                                         Eliminar
                                       </button>
                                     </div>
                                   )}
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) {
-                                        setEditLogoFile(file);
-                                        setEditingCompany({...editingCompany, logo_url: ''});
-                                      }
-                                    }}
-                                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                  />
-                                  <div className="text-center text-gray-500 text-sm">o</div>
-                                  <input
-                                    type="url"
-                                    value={editingCompany.logo_url || ''}
-                                    onChange={(e) => {
-                                      setEditingCompany({...editingCompany, logo_url: e.target.value});
-                                      setEditLogoFile(null);
-                                    }}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                                    placeholder="O ingresa URL del logo: https://ejemplo.com/logo.png"
-                                  />
+                                  <div className="space-y-3">
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-600 mb-2">Subir archivo</label>
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => {
+                                          const file = e.target.files?.[0];
+                                          if (file) {
+                                            setEditLogoFile(file);
+                                            setEditingCompany({...editingCompany, logo_url: ''});
+                                          }
+                                        }}
+                                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-colors"
+                                      />
+                                    </div>
+                                    <div className="relative">
+                                      <div className="absolute inset-0 flex items-center">
+                                        <div className="w-full border-t border-gray-300" />
+                                      </div>
+                                      <div className="relative flex justify-center text-xs">
+                                        <span className="bg-gray-50 px-2 text-gray-500">o ingresa URL</span>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <input
+                                        type="url"
+                                        value={editingCompany.logo_url || ''}
+                                        onChange={(e) => {
+                                          setEditingCompany({...editingCompany, logo_url: e.target.value});
+                                          setEditLogoFile(null);
+                                        }}
+                                        className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
+                                        placeholder="https://ejemplo.com/logo.png"
+                                      />
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                            <div className="flex justify-end space-x-3 pt-4 border-t">
+                            <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
                               <button
                                 onClick={() => setEditingCompany(null)}
-                                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                                className="px-6 py-2 text-gray-600 hover:text-gray-800 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                               >
                                 Cancelar
                               </button>
@@ -420,9 +538,15 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
                                   }
                                 }}
                                 disabled={loading}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium disabled:opacity-50"
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
                               >
-                                {loading ? 'Guardando...' : 'Guardar'}
+                                {loading && (
+                                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                )}
+                                <span>{loading ? 'Guardando...' : 'Guardar Cambios'}</span>
                               </button>
                             </div>
                           </div>
@@ -536,57 +660,92 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-900">Configuración de Facturación</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
+                  <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Serie Factura</label>
-                    <input
-                      type="text"
-                      value={billingConfig.serieFactura}
-                      onChange={(e) => setBillingConfig({...billingConfig, serieFactura: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={billingConfig.serieFactura}
+                        onChange={(e) => setBillingConfig({...billingConfig, serieFactura: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
+                        placeholder="F001"
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
-                  <div>
+                  <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Serie Boleta</label>
-                    <input
-                      type="text"
-                      value={billingConfig.serieBoleta}
-                      onChange={(e) => setBillingConfig({...billingConfig, serieBoleta: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={billingConfig.serieBoleta}
+                        onChange={(e) => setBillingConfig({...billingConfig, serieBoleta: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
+                        placeholder="B001"
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
-                  <div>
+                  <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Serie Nota</label>
-                    <input
-                      type="text"
-                      value={billingConfig.serieNota}
-                      onChange={(e) => setBillingConfig({...billingConfig, serieNota: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={billingConfig.serieNota}
+                        onChange={(e) => setBillingConfig({...billingConfig, serieNota: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
+                        placeholder="N001"
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
-                  <div>
+                  <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700 mb-2">IGV (%)</label>
-                    <input
-                      type="number"
-                      value={billingConfig.igv}
-                      onChange={(e) => {
-                        const newIgv = Number(e.target.value);
-                        setBillingConfig({...billingConfig, igv: newIgv});
-                      }}
-                      min="0"
-                      max="100"
-                      step="1"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    />
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={billingConfig.igv}
+                        onChange={(e) => {
+                          const newIgv = Number(e.target.value);
+                          setBillingConfig({...billingConfig, igv: newIgv});
+                        }}
+                        min="0"
+                        max="100"
+                        step="1"
+                        className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
+                        placeholder="18"
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
-                  <div className="md:col-span-2">
-                    <label className="flex items-center space-x-3">
+                  <div className="md:col-span-2 flex items-center">
+                    <label className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
                       <input
                         type="checkbox"
                         checked={billingConfig.numeracionAutomatica}
                         onChange={(e) => setBillingConfig({...billingConfig, numeracionAutomatica: e.target.checked})}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                       />
-                      <span className="text-sm font-medium text-gray-700">Numeración automática</span>
+                      <div>
+                        <span className="text-sm font-medium text-gray-700">Numeración automática</span>
+                        <p className="text-xs text-gray-500">Los números de comprobantes se generarán automáticamente</p>
+                      </div>
                     </label>
                   </div>
                 </div>
@@ -616,6 +775,7 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
           onSuccess={() => {
             console.log('Empresa registrada - recargando empresas');
             loadCompanies();
+            reloadCompanies();
           }}
         />
       </div>

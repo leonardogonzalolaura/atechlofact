@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
+import CompanySelector from '../CompanySelector';
 
 interface HeaderProps {
   user: string;
@@ -33,6 +34,7 @@ const Header = ({ user, onProfileOpen, onThemeSettingsOpen, onSettingsOpen, onLo
             </h1>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-4">
+            <CompanySelector />
             <span className={`hidden sm:block ${theme.header === 'bg-white' ? 'text-gray-700' : 'text-gray-200'}`}>
               Bienvenido, {user}
             </span>

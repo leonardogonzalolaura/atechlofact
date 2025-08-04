@@ -21,6 +21,10 @@ import CustomerList from './customer/CustomerList';
 import ProductList from './product/ProductList';
 import ReportsDashboard from './ReportsDashboard';
 import { InvoicePreview } from './invoice';
+import CompanyRequiredModal from './CompanyRequiredModal';
+import LoadingSpinner from './LoadingSpinner';
+import ProtectedModal from './ProtectedModal';
+import { useCompany } from '../contexts/CompanyContext';
 
 const Dashboard = () => {
     const [user, setUser] = useState('');
@@ -38,10 +42,28 @@ const Dashboard = () => {
     const [isReportsDashboardOpen, setIsReportsDashboardOpen] = useState(false);
     const [showInvoicePreview, setShowInvoicePreview] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState(null);
+    const [showCompanyRequired, setShowCompanyRequired] = useState(false);
+    
+    const { hasCompanies, loading } = useCompany();
 
     const handlePreviewInvoice = (invoice: any) => {
         setSelectedInvoice(invoice);
         setShowInvoicePreview(true);
+    };
+
+    const checkCompanyAndOpen = (openFunction: () => void) => {
+        console.log('checkCompanyAndOpen:', { hasCompanies, loading });
+        if (loading) {
+            console.log('Still loading, blocking action');
+            return;
+        }
+        if (!hasCompanies) {
+            console.log('No companies found, showing required modal');
+            setShowCompanyRequired(true);
+            return;
+        }
+        console.log('Companies found, opening modal');
+        openFunction();
     };
     const { theme } = useTheme();
     const router = useRouter();
@@ -58,6 +80,17 @@ const Dashboard = () => {
         } else {
             router.push('/');
         }
+        
+        // Listener para abrir registro de producto desde ProductList
+        const handleOpenProductRegistration = () => {
+            setIsProductRegistrationOpen(true);
+        };
+        
+        window.addEventListener('openProductRegistration', handleOpenProductRegistration);
+        
+        return () => {
+            window.removeEventListener('openProductRegistration', handleOpenProductRegistration);
+        };
     }, [router]);
 
     const handleLogout = () => {
@@ -88,16 +121,22 @@ const Dashboard = () => {
                     </button>
                 </div>
                 <StatsCards />
-                <QuickActions 
-                    onCustomerClick={() => setIsCustomerRegistrationOpen(true)}
-                    onInvoiceClick={() => setIsInvoiceCreationOpen(true)}
-                    onCreditNoteClick={() => setIsCreditNoteOpen(true)}
-                    onDebitNoteClick={() => setIsDebitNoteOpen(true)}
-                    onRemissionGuideClick={() => setIsRemissionGuideOpen(true)}
-                    onProductClick={() => setIsProductRegistrationOpen(true)}
-                    onCustomerListClick={() => setIsCustomerListOpen(true)}
-                    onProductListClick={() => setIsProductListOpen(true)}
-                />
+                {loading ? (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <LoadingSpinner />
+                    </div>
+                ) : (
+                    <QuickActions 
+                        onCustomerClick={() => checkCompanyAndOpen(() => setIsCustomerRegistrationOpen(true))}
+                        onInvoiceClick={() => checkCompanyAndOpen(() => setIsInvoiceCreationOpen(true))}
+                        onCreditNoteClick={() => checkCompanyAndOpen(() => setIsCreditNoteOpen(true))}
+                        onDebitNoteClick={() => checkCompanyAndOpen(() => setIsDebitNoteOpen(true))}
+                        onRemissionGuideClick={() => checkCompanyAndOpen(() => setIsRemissionGuideOpen(true))}
+                        onProductClick={() => checkCompanyAndOpen(() => setIsProductRegistrationOpen(true))}
+                        onCustomerListClick={() => checkCompanyAndOpen(() => setIsCustomerListOpen(true))}
+                        onProductListClick={() => checkCompanyAndOpen(() => setIsProductListOpen(true))}
+                    />
+                )}
                 <RecentInvoices onPreviewInvoice={handlePreviewInvoice} />
             </main>
             
@@ -119,10 +158,16 @@ const Dashboard = () => {
                 isOpen={isCustomerRegistrationOpen} 
                 onClose={() => setIsCustomerRegistrationOpen(false)} 
             />
-            <InvoiceCreation 
-                isOpen={isInvoiceCreationOpen} 
-                onClose={() => setIsInvoiceCreationOpen(false)} 
-            />
+            <ProtectedModal 
+                isOpen={isInvoiceCreationOpen}
+                onClose={() => setIsInvoiceCreationOpen(false)}
+                onOpenSettings={() => setIsSettingsOpen(true)}
+            >
+                <InvoiceCreation 
+                    isOpen={isInvoiceCreationOpen} 
+                    onClose={() => setIsInvoiceCreationOpen(false)} 
+                />
+            </ProtectedModal>
             <CreditNoteCreation 
                 isOpen={isCreditNoteOpen} 
                 onClose={() => setIsCreditNoteOpen(false)} 
@@ -155,6 +200,11 @@ const Dashboard = () => {
                 isOpen={showInvoicePreview}
                 onClose={() => setShowInvoicePreview(false)}
                 invoiceData={selectedInvoice}
+            />
+            <CompanyRequiredModal 
+                isOpen={showCompanyRequired}
+                onClose={() => setShowCompanyRequired(false)}
+                onOpenSettings={() => setIsSettingsOpen(true)}
             />
         </div>
     );

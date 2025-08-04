@@ -1,8 +1,11 @@
 'use client'
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAlert } from '../Alert';
 import ProductRegistration from './ProductRegistration';
+import { useProducts } from '../../hooks/useProducts';
+import { productService } from '../../services/productService';
+import { useCompany } from '../../contexts/CompanyContext';
 
 interface ProductListProps {
   isOpen: boolean;
@@ -34,74 +37,35 @@ const ProductList = ({ isOpen, onClose }: ProductListProps) => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  // Datos de ejemplo
-  const [products, setProducts] = useState<Product[]>([
-    {
-      id: '1',
-      codigo: 'PROD001',
-      descripcion: 'Laptop HP Pavilion 15.6"',
-      categoria: 'PRODUCTO',
-      unidadMedida: 'NIU',
-      precio: 2500.00,
-      stock: 15,
-      stockMinimo: 5,
-      afectoIGV: true,
-      fechaRegistro: '2024-01-15',
-      estado: 'ACTIVO'
-    },
-    {
-      id: '2',
-      codigo: 'SERV001',
-      descripcion: 'Servicio de Consultoría IT',
-      categoria: 'SERVICIO',
-      unidadMedida: 'NIU',
-      precio: 150.00,
-      stock: 0,
-      stockMinimo: 0,
-      afectoIGV: true,
-      fechaRegistro: '2024-01-20',
-      estado: 'ACTIVO'
-    },
-    {
-      id: '3',
-      codigo: 'PROD002',
-      descripcion: 'Mouse Inalámbrico Logitech',
-      categoria: 'PRODUCTO',
-      unidadMedida: 'NIU',
-      precio: 45.00,
-      stock: 3,
-      stockMinimo: 10,
-      afectoIGV: true,
-      fechaRegistro: '2024-02-01',
-      estado: 'ACTIVO'
-    },
-    {
-      id: '4',
-      codigo: 'PROD003',
-      descripcion: 'Cable HDMI 2m',
-      categoria: 'PRODUCTO',
-      unidadMedida: 'MTR',
-      precio: 25.00,
-      stock: 50,
-      stockMinimo: 20,
-      afectoIGV: true,
-      fechaRegistro: '2024-02-10',
-      estado: 'ACTIVO'
-    },
-    {
-      id: '5',
-      codigo: 'PROD004',
-      descripcion: 'Teclado Mecánico RGB',
-      categoria: 'PRODUCTO',
-      unidadMedida: 'NIU',
-      precio: 120.00,
-      stock: 0,
-      stockMinimo: 5,
-      afectoIGV: true,
-      fechaRegistro: '2024-02-15',
-      estado: 'INACTIVO'
+  const { activeCompany } = useCompany();
+  const { products: apiProducts, loading, loadProducts } = useProducts();
+  const [products, setProducts] = useState<Product[]>([]);
+  
+  // Recargar productos cuando se abre el modal
+  useEffect(() => {
+    if (isOpen) {
+      loadProducts();
     }
-  ]);
+  }, [isOpen, loadProducts]);
+  
+  // Convertir productos de API al formato del componente
+  useEffect(() => {
+    const convertedProducts = apiProducts.map(product => ({
+      id: product.id.toString(),
+      codigo: product.code,
+      descripcion: product.name,
+      categoria: product.product_type.toUpperCase(),
+      unidadMedida: product.unit_type,
+      precio: product.price,
+      stock: product.stock || 0,
+      stockMinimo: product.min_stock || 0,
+      afectoIGV: product.tax_type === 'gravado',
+      fechaRegistro: new Date(product.created_at).toISOString().split('T')[0],
+      estado: product.is_active ? 'ACTIVO' : 'INACTIVO' as 'ACTIVO' | 'INACTIVO'
+    }));
+    setProducts(convertedProducts);
+    console.log('Products converted:', convertedProducts.length);
+  }, [apiProducts]);
 
   if (!isOpen) return null;
 
@@ -130,60 +94,70 @@ const ProductList = ({ isOpen, onClose }: ProductListProps) => {
     setShowEditModal(true);
   };
 
-  const handleSaveEdit = (updatedProductData: any) => {
-    if (!editingProduct) return;
+  const handleSaveEdit = async (updatedProductData: any) => {
+    if (!editingProduct || !activeCompany?.id) return;
     
-    const updatedProducts = products.map(product => 
-      product.id === editingProduct.id 
-        ? { 
-            ...product, 
-            codigo: updatedProductData.codigo,
-            descripcion: updatedProductData.descripcion,
-            categoria: updatedProductData.categoria,
-            unidadMedida: updatedProductData.unidadMedida,
-            precio: updatedProductData.precio,
-            stock: updatedProductData.stock,
-            stockMinimo: updatedProductData.stockMinimo,
-            afectoIGV: updatedProductData.afectoIGV
-          }
-        : product
-    );
-    
-    setProducts(updatedProducts);
-    setShowEditModal(false);
-    setEditingProduct(null);
-    showSuccess('Producto actualizado', 'Los datos del producto se han actualizado correctamente');
+    try {
+      const updatePayload = {
+        code: updatedProductData.codigo,
+        name: updatedProductData.descripcion,
+        product_type: updatedProductData.categoria === 'SERVICIO' ? 'service' as const : 'product' as const,
+        description: updatedProductData.descripcion,
+        unit_type: updatedProductData.unidadMedida,
+        price: updatedProductData.precio,
+        tax_type: updatedProductData.afectoIGV ? 'gravado' as const : 'exonerado' as const,
+        category: updatedProductData.categoria,
+        ...(updatedProductData.categoria !== 'SERVICIO' && {
+          stock: updatedProductData.stock,
+          min_stock: updatedProductData.stockMinimo
+        })
+      };
+      
+      await productService.updateProduct(activeCompany.id, parseInt(editingProduct.id), updatePayload);
+      
+      setShowEditModal(false);
+      setEditingProduct(null);
+      loadProducts();
+      showSuccess('Producto actualizado', 'Los datos del producto se han actualizado correctamente');
+    } catch (error: any) {
+      showError('Error', [error.message || 'Error actualizando producto']);
+    }
   };
 
   const handleDelete = (product: Product) => {
+    if (!activeCompany?.id) return;
+    
     showConfirm(
       'Confirmar eliminación',
       `¿Está seguro de eliminar el producto "${product.descripcion}"?`,
-      () => {
-        const updatedProducts = products.filter(p => p.id !== product.id);
-        setProducts(updatedProducts);
-        showSuccess('Producto eliminado', 'El producto se ha eliminado correctamente');
+      async () => {
+        try {
+          await productService.deleteProduct(activeCompany.id, parseInt(product.id));
+          loadProducts();
+          showSuccess('Producto eliminado', 'El producto se ha eliminado correctamente');
+        } catch (error: any) {
+          showError('Error', [error.message || 'Error eliminando producto']);
+        }
       },
       'Eliminar',
       'Cancelar'
     );
   };
 
-  const handleToggleStatus = (productId: string) => {
-    const updatedProducts = products.map(product => 
-      product.id === productId 
-        ? { ...product, estado: product.estado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO' as 'ACTIVO' | 'INACTIVO' }
-        : product
-    );
+  const handleToggleStatus = async (productId: string) => {
+    if (!activeCompany?.id) return;
     
     const product = products.find(p => p.id === productId);
-    const newStatus = product?.estado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
+    if (!product) return;
     
-    setProducts(updatedProducts);
-    showSuccess(
-      'Estado actualizado', 
-      `El producto se ha ${newStatus === 'ACTIVO' ? 'activado' : 'desactivado'} correctamente`
-    );
+    try {
+      await productService.updateProduct(activeCompany.id, parseInt(productId), {});
+      loadProducts();
+      const newStatus = product.estado === 'ACTIVO' ? 'desactivado' : 'activado';
+      showSuccess('Estado actualizado', `El producto se ha ${newStatus} correctamente`);
+    } catch (error: any) {
+      showError('Error', [error.message || 'Error actualizando estado']);
+    }
   };
 
   const getStockStatus = (product: Product) => {
@@ -442,6 +416,42 @@ const ProductList = ({ isOpen, onClose }: ProductListProps) => {
             }}
             onSave={handleSaveEdit}
           />
+        )}
+        
+        {loading && (
+          <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        )}
+        
+        {!loading && products.length === 0 && (
+          <div className="flex-1 flex items-center justify-center p-8">
+            <div className="text-center max-w-md">
+              <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No hay productos registrados</h3>
+              <p className="text-gray-500 mb-6">Comienza creando tu primer producto o servicio para poder generar facturas y gestionar tu inventario.</p>
+              <button
+                onClick={() => {
+                  onClose();
+                  // Trigger product registration modal
+                  setTimeout(() => {
+                    const event = new CustomEvent('openProductRegistration');
+                    window.dispatchEvent(event);
+                  }, 100);
+                }}
+                className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors space-x-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                <span>Registrar Primer Producto</span>
+              </button>
+            </div>
+          </div>
         )}
         
         <AlertComponent />

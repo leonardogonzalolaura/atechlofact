@@ -1,5 +1,6 @@
 'use client'
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext } from 'react';
+import { useActiveCompany } from '../hooks/useActiveCompany';
 
 interface CompanyData {
   ruc: string;
@@ -10,43 +11,84 @@ interface CompanyData {
   logo?: string;
 }
 
+interface Company {
+  id: string;
+  name: string;
+  business_name: string;
+  ruc: string;
+  address: string;
+  phone: string;
+  email: string;
+  logo_url?: string;
+}
+
 interface CompanyContextType {
   companyData: CompanyData;
   updateCompanyData: (data: Partial<CompanyData>) => void;
+  activeCompany: Company | null;
+  companies: Company[];
+  loading: boolean;
+  error: string | null;
+  selectCompany: (company: Company) => void;
+  reloadCompanies: () => void;
+  hasCompanies: boolean;
 }
-
-const defaultCompanyData: CompanyData = {
-  ruc: '20123456789',
-  razonSocial: 'Mi Empresa S.A.C.',
-  direccion: 'Av. Principal 123, Lima',
-  telefono: '01-234-5678',
-  email: 'contacto@miempresa.com'
-};
 
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
 
 export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [companyData, setCompanyData] = useState<CompanyData>(defaultCompanyData);
+  const {
+    activeCompany,
+    companies,
+    loading,
+    error,
+    selectCompany,
+    reloadCompanies,
+    hasCompanies
+  } = useActiveCompany();
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('companyData');
-      if (stored) {
-        setCompanyData(JSON.parse(stored));
-      }
-    }
-  }, []);
+  // Convertir datos de empresa activa al formato legacy
+  const companyData: CompanyData = activeCompany ? {
+    ruc: activeCompany.ruc,
+    razonSocial: activeCompany.business_name || activeCompany.name,
+    direccion: activeCompany.address,
+    telefono: activeCompany.phone,
+    email: activeCompany.email,
+    logo: activeCompany.logo_url
+  } : {
+    ruc: '',
+    razonSocial: '',
+    direccion: '',
+    telefono: '',
+    email: '',
+    logo: ''
+  };
+
+  console.log('CompanyContext state:', { 
+    hasCompanies, 
+    companiesCount: companies.length, 
+    activeCompany: activeCompany?.name,
+    loading 
+  });
 
   const updateCompanyData = (data: Partial<CompanyData>) => {
-    const newData = { ...companyData, ...data };
-    setCompanyData(newData);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('companyData', JSON.stringify(newData));
-    }
+    // Esta función se mantiene para compatibilidad pero no hace nada
+    // Los datos reales se actualizan a través de Settings
+    console.log('updateCompanyData called with:', data);
   };
 
   return (
-    <CompanyContext.Provider value={{ companyData, updateCompanyData }}>
+    <CompanyContext.Provider value={{
+      companyData,
+      updateCompanyData,
+      activeCompany,
+      companies,
+      loading,
+      error,
+      selectCompany,
+      reloadCompanies,
+      hasCompanies: !loading && companies.length > 0
+    }}>
       {children}
     </CompanyContext.Provider>
   );

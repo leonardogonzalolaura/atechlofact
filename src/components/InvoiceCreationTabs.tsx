@@ -10,6 +10,8 @@ import InvoiceComprobante from './invoice/InvoiceComprobante';
 import InvoiceCliente from './invoice/InvoiceCliente';
 import InvoiceItems from './invoice/InvoiceItems';
 import InvoiceObservaciones from './invoice/InvoiceObservaciones';
+import CompanyIndicator from './CompanyIndicator';
+import { useProducts } from '../hooks/useProducts';
 
 interface InvoiceCreationProps {
   isOpen: boolean;
@@ -27,8 +29,21 @@ interface InvoiceItem {
 const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
   const { taxConfig, calculateIGV, calculateTotal } = useTax();
   const { getNextNumber } = useSeries();
-  const { companyData } = useCompany();
+  const { companyData, hasCompanies, loading } = useCompany();
   const { showError, showSuccess, AlertComponent } = useAlert();
+  
+  // Si no hay empresas configuradas, mostrar mensaje y cerrar
+  React.useEffect(() => {
+    if (isOpen && !loading && !hasCompanies) {
+      showError('Empresa requerida', ['Debe configurar al menos una empresa antes de crear documentos.']);
+      onClose();
+    }
+  }, [isOpen, loading, hasCompanies, showError, onClose]);
+  
+  // No renderizar si no hay empresas
+  if (!hasCompanies && !loading) {
+    return null;
+  }
   const [activeTab, setActiveTab] = useState('comprobante');
   
   const [invoiceData, setInvoiceData] = useState({
@@ -61,16 +76,7 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
   const [customerDropdownPosition, setCustomerDropdownPosition] = useState<{top: number, left: number, width: number}>({top: 0, left: 0, width: 0});
   const [showNewCustomerModal, setShowNewCustomerModal] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
-
-  // Productos disponibles
-  const availableProducts = [
-    { id: '1', codigo: 'PROD001', descripcion: 'Laptop HP Pavilion 15.6"', precio: 2500.00, categoria: 'PRODUCTO', afectoIGV: true },
-    { id: '2', codigo: 'PROD003', descripcion: 'Laptop Lenovo ThinkPad', precio: 2800.00, categoria: 'PRODUCTO', afectoIGV: true },
-    { id: '3', codigo: 'PROD004', descripcion: 'Laptop Dell Inspiron', precio: 2200.00, categoria: 'PRODUCTO', afectoIGV: true },
-    { id: '4', codigo: 'SERV001', descripcion: 'Servicio de Consultoría IT', precio: 150.00, categoria: 'SERVICIO', afectoIGV: true },
-    { id: '5', codigo: 'PROD002', descripcion: 'Mouse Inalámbrico Logitech', precio: 45.00, categoria: 'PRODUCTO', afectoIGV: true },
-    { id: '6', codigo: 'SERV002', descripcion: 'Soporte Técnico Remoto', precio: 80.00, categoria: 'SERVICIO', afectoIGV: true }
-  ];
+  const { searchProducts } = useProducts();
 
   // Clientes disponibles
   const availableCustomers = [
@@ -169,31 +175,42 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
     }));
   };
 
-  const searchProducts = (searchTerm: string, itemId: string) => {
+  const handleSearchProducts = async (searchTerm: string, itemId: string) => {
     if (searchTerm.length < 2) {
       setShowSearchResults(prev => ({ ...prev, [itemId]: false }));
       return;
     }
     
-    const results = availableProducts.filter(product => 
-      product.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.codigo.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    
-    setSearchResults(results);
-    
-    // Calcular posición del dropdown
-    const inputElement = inputRefs.current[itemId];
-    if (inputElement) {
-      const rect = inputElement.getBoundingClientRect();
-      setDropdownPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
-        width: Math.max(rect.width, 300)
-      });
+    try {
+      const results = await searchProducts(searchTerm);
+      // Convertir formato API a formato esperado por el componente
+      const formattedResults = results.map(product => ({
+        id: product.id.toString(),
+        codigo: product.code,
+        descripcion: product.name,
+        precio: product.price,
+        categoria: product.product_type.toUpperCase(),
+        afectoIGV: product.tax_type === 'gravado'
+      }));
+      
+      setSearchResults(formattedResults);
+      
+      // Calcular posición del dropdown
+      const inputElement = inputRefs.current[itemId];
+      if (inputElement) {
+        const rect = inputElement.getBoundingClientRect();
+        setDropdownPosition({
+          top: rect.bottom + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: Math.max(rect.width, 300)
+        });
+      }
+      
+      setShowSearchResults(prev => ({ ...prev, [itemId]: formattedResults.length > 0 }));
+    } catch (error) {
+      console.error('Error searching products:', error);
+      setShowSearchResults(prev => ({ ...prev, [itemId]: false }));
     }
-    
-    setShowSearchResults(prev => ({ ...prev, [itemId]: results.length > 0 }));
   };
 
   const selectProductFromSearch = (product: any, itemId: string) => {
@@ -266,6 +283,12 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
 
   const validateForm = () => {
     const errors = [];
+    
+    // Validar que hay empresa configurada
+    if (!companyData.ruc || !companyData.razonSocial) {
+      errors.push('No hay empresa configurada. Configure su empresa en Configuración.');
+      return errors;
+    }
     
     // Validar información del comprobante
     if (!invoiceData.serie.trim()) errors.push('Serie es requerida');
@@ -385,6 +408,7 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
         </div>
 
         <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
+          <CompanyIndicator />
           {/* Tab: Información del Comprobante */}
           {activeTab === 'comprobante' && (
             <InvoiceComprobante 
@@ -420,7 +444,7 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
               addItem={addItem}
               removeItem={removeItem}
               updateItem={updateItem}
-              searchProducts={searchProducts}
+              searchProducts={handleSearchProducts}
               selectProductFromSearch={selectProductFromSearch}
               openProductSelector={openProductSelector}
               searchResults={searchResults}
@@ -428,7 +452,7 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
               dropdownPosition={dropdownPosition}
               showProductSelector={showProductSelector}
               setShowProductSelector={setShowProductSelector}
-              availableProducts={availableProducts}
+              availableProducts={searchResults}
               selectProduct={selectProduct}
               inputRefs={inputRefs}
               setShowSearchResults={setShowSearchResults}

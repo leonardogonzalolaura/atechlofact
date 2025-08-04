@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useTax } from '../../contexts/TaxContext';
 import { useAlert } from '../Alert';
+import { useCompany } from '../../contexts/CompanyContext';
+import { productService } from '../../services/productService';
 
 interface ProductRegistrationProps {
   isOpen: boolean;
@@ -24,6 +26,8 @@ const ProductRegistration = ({ isOpen, onClose, initialData, onSave }: ProductRe
   const { theme } = useTheme();
   const { taxConfig } = useTax();
   const { showError, showSuccess, AlertComponent } = useAlert();
+  const { activeCompany } = useCompany();
+  const [loading, setLoading] = useState(false);
   const [productData, setProductData] = useState({
     codigo: initialData?.codigo || '',
     descripcion: initialData?.descripcion || '',
@@ -90,22 +94,56 @@ const ProductRegistration = ({ isOpen, onClose, initialData, onSave }: ProductRe
     return errors;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const errors = validateProduct();
     
     if (errors.length > 0) {
-      showError('Por favor corrija los siguientes errores:',errors);
+      showError('Por favor corrija los siguientes errores:', errors);
       return;
     }
     
-    console.log('Guardando producto...', productData);
-    // Aquí iría la lógica para guardar el producto
+    if (!activeCompany?.id) {
+      showError('Error', ['No hay empresa activa seleccionada']);
+      return;
+    }
     
-    // Si hay callback onSave, ejecutarlo con los datos del producto
-    if (onSave) {
-      onSave(productData);
-    } else {
+    try {
+      setLoading(true);
+      
+      const productPayload = {
+        code: productData.codigo,
+        name: productData.descripcion,
+        product_type: productData.categoria === 'SERVICIO' ? 'service' as const : 'product' as const,
+        description: productData.observaciones || productData.descripcion,
+        unit_type: productData.unidadMedida,
+        price: productData.precio,
+        tax_type: productData.afectoIGV ? 'gravado' as const : 'exonerado' as const,
+        igv_rate: taxConfig.igvRate * 100,
+        category: productData.categoria,
+        ...(productData.categoria !== 'SERVICIO' && {
+          stock: productData.stock,
+          min_stock: productData.stockMinimo
+        })
+      };
+      
+      await productService.createProduct(activeCompany.id, productPayload);
+      
+      showSuccess('Producto guardado', 'El producto se ha registrado correctamente');
+      
+      // Si hay callback onSave, ejecutarlo
+      if (onSave) {
+        onSave(productData);
+      }
+      
+      // Disparar evento para recargar productos
+      window.dispatchEvent(new Event('productCreated'));
+      
       onClose();
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Error al guardar el producto';
+      showError('Error', [errorMessage]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -324,9 +362,16 @@ const ProductRegistration = ({ isOpen, onClose, initialData, onSave }: ProductRe
           </button>
           <button
             onClick={handleSave}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors font-medium"
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
           >
-            Guardar Producto
+            {loading && (
+              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            )}
+            <span>{loading ? 'Guardando...' : 'Guardar Producto'}</span>
           </button>
         </div>
         <AlertComponent />
