@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useRecentInvoices } from '../../hooks/useRecentInvoices';
+import { Invoice } from '../../services/invoiceTypes';
 
 interface RecentInvoicesProps {
   onPreviewInvoice: (invoice: any) => void;
@@ -7,45 +9,26 @@ interface RecentInvoicesProps {
 
 const RecentInvoices = ({ onPreviewInvoice }: RecentInvoicesProps) => {
   const { theme } = useTheme();
-  const [recentInvoices, setRecentInvoices] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+  
+  // Use optimized hook for recent invoices
+  const { invoices, loading, error } = useRecentInvoices();
 
+  // Reset pagination when filters change
   useEffect(() => {
-    const loadRecentInvoices = () => {
-      const saved = JSON.parse(localStorage.getItem('recentInvoices') || '[]');
-      setRecentInvoices(saved);
-    };
-    
-    loadRecentInvoices();
-    
-    const handleStorageChange = () => {
-      loadRecentInvoices();
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    const interval = setInterval(loadRecentInvoices, 2000);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
-    };
-  }, []);
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
 
-  const filteredInvoices = recentInvoices.filter((invoice: any) => {
-    const invoiceId = `${invoice.serie}-${invoice.numero}`;
-    const matchesSearch = invoiceId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         invoice.cliente.razonSocial.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredInvoices = invoices.filter((invoice: Invoice) => {
+    const matchesSearch = invoice.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         invoice.customer.name.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Simular estado basado en fecha (facturas de hoy = Pendiente, anteriores = Pagada)
-    const invoiceDate = new Date(invoice.fechaCreacion);
-    const today = new Date();
-    const isToday = invoiceDate.toDateString() === today.toDateString();
-    const invoiceStatus = isToday ? 'Pendiente' : 'Pagada';
-    
-    const matchesStatus = statusFilter === 'Todos' || invoiceStatus === statusFilter;
+    const matchesStatus = statusFilter === 'Todos' || 
+                         (statusFilter === 'Pagada' && invoice.status === 'paid') ||
+                         (statusFilter === 'Pendiente' && invoice.status !== 'paid');
     
     return matchesSearch && matchesStatus;
   });
@@ -73,8 +56,8 @@ const RecentInvoices = ({ onPreviewInvoice }: RecentInvoicesProps) => {
               className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-900"
             >
               <option value="Todos">Todos</option>
-              <option value="Pagada">Pagada</option>
-              <option value="Pendiente">Pendiente</option>
+              <option value="Pagada">Pagadas</option>
+              <option value="Pendiente">Pendientes</option>
             </select>
 
           </div>
@@ -102,32 +85,52 @@ const RecentInvoices = ({ onPreviewInvoice }: RecentInvoicesProps) => {
             </tr>
           </thead>
           <tbody className={`bg-${theme.card} divide-y ${theme.colors.tableDivider}`}>
-            {paginatedInvoices.length > 0 ? (
-              paginatedInvoices.map((invoice: any) => {
-                // Simular estado basado en fecha
-                const invoiceDate = new Date(invoice.fechaCreacion);
-                const today = new Date();
-                const isToday = invoiceDate.toDateString() === today.toDateString();
-                const invoiceStatus = isToday ? 'Pendiente' : 'Pagada';
+            {loading ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <p>Cargando facturas...</p>
+                </td>
+              </tr>
+            ) : error ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                  <div className="text-4xl mb-2">⚠️</div>
+                  <p className="font-medium text-red-600">Error cargando facturas</p>
+                  <p className="text-sm">{error}</p>
+                </td>
+              </tr>
+            ) : paginatedInvoices.length > 0 ? (
+              paginatedInvoices.map((invoice: Invoice) => {
+                const getStatusInfo = (status: string) => {
+                  switch (status) {
+                    case 'paid':
+                      return { label: 'Pagada', class: 'bg-green-100 text-green-800' };
+                    case 'sent':
+                      return { label: 'Enviada', class: 'bg-blue-100 text-blue-800' };
+                    case 'cancelled':
+                      return { label: 'Cancelada', class: 'bg-red-100 text-red-800' };
+                    default:
+                      return { label: 'Borrador', class: 'bg-yellow-100 text-yellow-800' };
+                  }
+                };
+                
+                const statusInfo = getStatusInfo(invoice.status);
                 
                 return (
                   <tr key={invoice.id} className={theme.colors.tableHover}>
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {invoice.serie}-{invoice.numero}
+                      {invoice.invoice_number}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {invoice.cliente.razonSocial}
+                      {invoice.customer.name}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                      S/ {invoice.total.toFixed(2)}
+                      {invoice.currency} {(Number(invoice.total_amount) || 0).toFixed(2)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        invoiceStatus === 'Pagada' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {invoiceStatus}
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusInfo.class}`}>
+                        {statusInfo.label}
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -147,7 +150,7 @@ const RecentInvoices = ({ onPreviewInvoice }: RecentInvoicesProps) => {
                 <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                   <div className="text-4xl mb-2">📄</div>
                   <p className="font-medium">No hay facturas recientes</p>
-                  <p className="text-sm">Las facturas generadas aparecerán aquí</p>
+                  <p className="text-sm">Las facturas creadas aparecerán aquí</p>
                 </td>
               </tr>
             )}

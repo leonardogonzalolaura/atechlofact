@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 
 import { useTax } from '../contexts/TaxContext';
 import { useSeries } from '../contexts/SeriesContext';
+import { useCompany } from '../contexts/CompanyContext';
 import { useAlert } from './Alert';
 import DocumentHeader from './shared/DocumentHeader';
 import TabNavigation from './shared/TabNavigation';
@@ -27,6 +28,7 @@ interface CreditNoteItem {
 const CreditNoteCreation = ({ isOpen, onClose }: CreditNoteCreationProps) => {
   const { taxConfig, calculateIGV, calculateTotal } = useTax();
   const { getNextNumber } = useSeries();
+  const { activeCompany } = useCompany();
   const { showError, showSuccess, AlertComponent } = useAlert();
   const [activeTab, setActiveTab] = useState('documento');
   
@@ -112,12 +114,37 @@ const CreditNoteCreation = ({ isOpen, onClose }: CreditNoteCreationProps) => {
 
   // Generar numeración automática
   React.useEffect(() => {
-    if (isOpen && !creditNoteData.serie) {
-      const numeroCompleto = getNextNumber('notasCredito');
-      const [serie, numero] = numeroCompleto.split('-');
-      setCreditNoteData(prev => ({ ...prev, serie, numero }));
+    if (!isOpen || !activeCompany?.id) return;
+    
+    const generateNumber = async () => {
+      try {
+        const numeroCompleto = await getNextNumber('notasCredito', activeCompany.id);
+        
+        if (!numeroCompleto || typeof numeroCompleto !== 'string') {
+          console.warn('No sequence available for credit note');
+          setCreditNoteData(prev => ({ ...prev, serie: 'NC01', numero: '000001' }));
+          return;
+        }
+        
+        const parts = numeroCompleto.split('-');
+        if (parts.length !== 2) {
+          console.warn('Invalid sequence format, using defaults');
+          setCreditNoteData(prev => ({ ...prev, serie: 'NC01', numero: '000001' }));
+          return;
+        }
+        
+        const [serie, numero] = parts;
+        setCreditNoteData(prev => ({ ...prev, serie, numero }));
+      } catch (error: any) {
+        console.error('Error generating credit note number:', error);
+        setCreditNoteData(prev => ({ ...prev, serie: 'NC01', numero: '000001' }));
+      }
+    };
+    
+    if (!creditNoteData.serie) {
+      generateNumber();
     }
-  }, [isOpen, getNextNumber]);
+  }, [isOpen, activeCompany?.id]);
 
   // Reset al cerrar
   React.useEffect(() => {

@@ -7,6 +7,9 @@ import { userService } from '../services/userService';
 import { notificationService } from '../services/notificationService';
 import { notificationApiService } from '../services/notificationApiService';
 import { NOTIFICATION_DEFAULTS, getDefaultNotificationPreferences } from '../config/notificationDefaults';
+import { useSequences } from '../hooks/useSequences';
+import { CreateSequenceData } from '../services/sequenceTypes';
+import { useAlert } from './Alert';
 import CompanyForm from './CompanyForm';
 
 interface SettingsProps {
@@ -18,6 +21,7 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
   const { theme } = useTheme();
   const { taxConfig, updateTaxConfig } = useTax();
   const { companyData, updateCompanyData, reloadCompanies } = useCompany();
+  const { showError, showSuccess, showConfirm, AlertComponent } = useAlert();
   const [activeTab, setActiveTab] = useState('company');
   const [localCompanyData, setLocalCompanyData] = useState(companyData);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -27,14 +31,21 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
   const [loading, setLoading] = useState(false);
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [editLogoFile, setEditLogoFile] = useState<File | null>(null);
-
-  const [billingConfig, setBillingConfig] = useState({
-    serieFactura: 'F001',
-    serieBoleta: 'B001',
-    serieNota: 'N001',
-    numeracionAutomatica: true,
-    igv: Math.round(taxConfig.igvRate * 100) // Convertir de decimal a porcentaje
+  
+  // Sequences state
+  const { sequences, loading: sequencesLoading, createSequence, updateSequence, deleteSequence } = useSequences();
+  const [showSequenceModal, setShowSequenceModal] = useState(false);
+  const [editingSequence, setEditingSequence] = useState<any>(null);
+  const [sequenceForm, setSequenceForm] = useState({
+    document_type: 'invoice' as 'invoice' | 'receipt' | 'credit_note' | 'debit_note' | 'quotation',
+    series: '',
+    current_number: 0,
+    prefix: '',
+    suffix: '',
+    min_digits: 8
   });
+
+
 
   const [notificationConfig, setNotificationConfig] = useState({
     enableDesktop: NOTIFICATION_DEFAULTS.enable_desktop,
@@ -54,10 +65,7 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
       loadCompanies();
       if (typeof window !== 'undefined') {
         const stored = localStorage.getItem('billingConfig');
-        if (stored) {
-          const config = JSON.parse(stored);
-          setBillingConfig(prev => ({ ...prev, ...config }));
-        }
+
         
         // Load notification config with smart caching
         const loadNotificationConfig = () => {
@@ -143,12 +151,6 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
     
     // Guardar en localStorage
     if (typeof window !== 'undefined') {
-      localStorage.setItem('billingConfig', JSON.stringify(billingConfig));
-      
-      // Actualizar contexto de impuestos
-      updateTaxConfig({
-        igvRate: billingConfig.igv / 100 // Convertir porcentaje a decimal
-      });
       
       // Save notification config
       await notificationService.updateConfig({
@@ -177,8 +179,7 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
         enableSystemAlerts: notificationConfig.enableSystemAlerts
       }));
       
-      // Disparar evento para notificar cambios
-      window.dispatchEvent(new Event('billingConfigChanged'));
+
     }
     
     onClose();
@@ -217,19 +218,20 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
                   <span>Datos de Empresa</span>
                 </div>
               </button>
+
               <button
-                onClick={() => setActiveTab('billing')}
+                onClick={() => setActiveTab('sequences')}
                 className={`w-full text-left px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
-                  activeTab === 'billing' 
+                  activeTab === 'sequences' 
                     ? `${theme.colors.primary} text-white` 
                     : 'text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 <div className="flex items-center space-x-3">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
                   </svg>
-                  <span>Facturación</span>
+                  <span>Correlativos</span>
                 </div>
               </button>
               <button
@@ -757,99 +759,159 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
               </div>
             )}
 
-            {activeTab === 'billing' && (
+
+
+            {activeTab === 'sequences' && (
               <div className="space-y-6">
-                <h3 className="text-lg font-semibold text-gray-900">Configuración de Facturación</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Serie Factura</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={billingConfig.serieFactura}
-                        onChange={(e) => setBillingConfig({...billingConfig, serieFactura: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
-                        placeholder="F001"
-                      />
-                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                      </div>
-                    </div>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Gestión de Correlativos</h3>
+                    <p className="text-sm text-gray-600">Configure las series y numeración de sus documentos</p>
                   </div>
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Serie Boleta</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={billingConfig.serieBoleta}
-                        onChange={(e) => setBillingConfig({...billingConfig, serieBoleta: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
-                        placeholder="B001"
-                      />
-                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Serie Nota</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={billingConfig.serieNota}
-                        onChange={(e) => setBillingConfig({...billingConfig, serieNota: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
-                        placeholder="N001"
-                      />
-                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">IGV (%)</label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        value={billingConfig.igv}
-                        onChange={(e) => {
-                          const newIgv = Number(e.target.value);
-                          setBillingConfig({...billingConfig, igv: newIgv});
-                        }}
-                        min="0"
-                        max="100"
-                        step="1"
-                        className="w-full px-4 py-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm transition-all duration-200 hover:border-gray-400"
-                        placeholder="18"
-                      />
-                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="md:col-span-2 flex items-center">
-                    <label className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={billingConfig.numeracionAutomatica}
-                        onChange={(e) => setBillingConfig({...billingConfig, numeracionAutomatica: e.target.checked})}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <div>
-                        <span className="text-sm font-medium text-gray-700">Numeración automática</span>
-                        <p className="text-xs text-gray-500">Los números de comprobantes se generarán automáticamente</p>
-                      </div>
-                    </label>
-                  </div>
+                  <button
+                    onClick={() => {
+                      setEditingSequence(null);
+                      setSequenceForm({
+                        document_type: 'invoice',
+                        series: '',
+                        current_number: 0,
+                        prefix: '',
+                        suffix: '',
+                        min_digits: 8
+                      });
+                      setShowSequenceModal(true);
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-medium flex items-center space-x-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    <span>Nuevo Correlativo</span>
+                  </button>
                 </div>
+                
+                {sequencesLoading ? (
+                  <div className="flex justify-center items-center h-32">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span className="ml-2 text-gray-600">Cargando correlativos...</span>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-lg border">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serie</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número Actual</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Formato</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {sequences.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                                <div className="text-4xl mb-2">🔢</div>
+                                <p className="font-medium">No hay correlativos configurados</p>
+                                <p className="text-sm">Agregue correlativos para sus documentos</p>
+                              </td>
+                            </tr>
+                          ) : (
+                            sequences.map((sequence) => {
+                              const getDocumentTypeLabel = (type: string) => {
+                                const types = {
+                                  invoice: 'Factura',
+                                  receipt: 'Boleta',
+                                  credit_note: 'Nota de Crédito',
+                                  debit_note: 'Nota de Débito',
+                                  quotation: 'Cotización'
+                                };
+                                return types[type as keyof typeof types] || type;
+                              };
+                              
+                              const formatExample = `${sequence.prefix}${sequence.series}-${sequence.current_number.toString().padStart(sequence.min_digits, '0')}${sequence.suffix}`;
+                              
+                              return (
+                                <tr key={sequence.id}>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    {getDocumentTypeLabel(sequence.document_type)}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {sequence.series}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {sequence.current_number}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {formatExample}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                      sequence.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                    }`}>
+                                      {sequence.is_active ? 'Activo' : 'Inactivo'}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <div className="flex justify-end space-x-2">
+                                      <button
+                                        onClick={() => {
+                                          setEditingSequence(sequence);
+                                          setSequenceForm({
+                                            document_type: sequence.document_type,
+                                            series: sequence.series,
+                                            current_number: sequence.current_number,
+                                            prefix: sequence.prefix,
+                                            suffix: sequence.suffix,
+                                            min_digits: sequence.min_digits
+                                          });
+                                          setShowSequenceModal(true);
+                                        }}
+                                        className="text-blue-600 hover:text-blue-900"
+                                        title="Editar"
+                                      >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          showConfirm(
+                                            'Confirmar eliminación',
+                                            `¿Está seguro de eliminar el correlativo ${sequence.series}?`,
+                                            async () => {
+                                              try {
+                                                await deleteSequence(sequence.id);
+                                                showSuccess('Correlativo eliminado', 'El correlativo se ha eliminado correctamente');
+                                                window.dispatchEvent(new Event('sequenceDeleted'));
+                                              } catch (error: any) {
+                                                showError('Error', [error.message]);
+                                              }
+                                            },
+                                            'Eliminar',
+                                            'Cancelar'
+                                          );
+                                        }}
+                                        className="text-red-600 hover:text-red-900"
+                                        title="Eliminar"
+                                      >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1036,6 +1098,141 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
             reloadCompanies();
           }}
         />
+        
+        {/* Sequence Modal */}
+        {showSequenceModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {editingSequence ? 'Editar Correlativo' : 'Nuevo Correlativo'}
+                </h3>
+                <button
+                  onClick={() => setShowSequenceModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Documento</label>
+                  <select
+                    value={sequenceForm.document_type}
+                    onChange={(e) => setSequenceForm({...sequenceForm, document_type: e.target.value as any})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  >
+                    <option value="invoice">Factura</option>
+                    <option value="receipt">Boleta</option>
+                    <option value="credit_note">Nota de Crédito</option>
+                    <option value="debit_note">Nota de Débito</option>
+                    <option value="quotation">Cotización</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Serie</label>
+                  <input
+                    type="text"
+                    value={sequenceForm.series}
+                    onChange={(e) => setSequenceForm({...sequenceForm, series: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    placeholder="F001"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Número Inicial</label>
+                    <input
+                      type="number"
+                      value={sequenceForm.current_number}
+                      onChange={(e) => setSequenceForm({...sequenceForm, current_number: parseInt(e.target.value) || 0})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Mínimo Dígitos</label>
+                    <input
+                      type="number"
+                      value={sequenceForm.min_digits}
+                      onChange={(e) => setSequenceForm({...sequenceForm, min_digits: parseInt(e.target.value) || 8})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      min="1"
+                      max="12"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Prefijo (opcional)</label>
+                    <input
+                      type="text"
+                      value={sequenceForm.prefix}
+                      onChange={(e) => setSequenceForm({...sequenceForm, prefix: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      placeholder="BOL-"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Sufijo (opcional)</label>
+                    <input
+                      type="text"
+                      value={sequenceForm.suffix}
+                      onChange={(e) => setSequenceForm({...sequenceForm, suffix: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      placeholder="-2024"
+                    />
+                  </div>
+                </div>
+                
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Vista Previa:</label>
+                  <p className="text-sm text-gray-900 font-mono">
+                    {sequenceForm.prefix}{sequenceForm.series}-{sequenceForm.current_number.toString().padStart(sequenceForm.min_digits, '0')}{sequenceForm.suffix}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3 p-6 border-t bg-gray-50">
+                <button
+                  onClick={() => setShowSequenceModal(false)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      if (editingSequence) {
+                        await updateSequence(editingSequence.id, sequenceForm);
+                        showSuccess('Correlativo actualizado', 'El correlativo se ha actualizado correctamente');
+                        window.dispatchEvent(new Event('sequenceUpdated'));
+                      } else {
+                        await createSequence(sequenceForm);
+                        showSuccess('Correlativo creado', 'El correlativo se ha creado correctamente');
+                        window.dispatchEvent(new Event('sequenceCreated'));
+                      }
+                      setShowSequenceModal(false);
+                    } catch (error: any) {
+                      showError('Error', [error.message]);
+                    }
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors font-medium"
+                >
+                  {editingSequence ? 'Actualizar' : 'Crear'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <AlertComponent />
       </div>
     </div>
   );

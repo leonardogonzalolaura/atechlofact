@@ -3,15 +3,24 @@ import React, { useState } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAlert } from '../Alert';
 import { consultRUC, consultDNI } from '../../utils/validators';
+import { useCustomers } from '../../hooks/useCustomers';
+import { CreateCustomerData } from '../../services/customerTypes';
 
 interface CustomerRegistrationProps {
   isOpen: boolean;
   onClose: () => void;
   initialData?: {
-    razonSocial?: string;
-    tipoDocumento?: string;
-    numeroDocumento?: string;
-    direccion?: string;
+    id?: number;
+    name?: string;
+    document_type?: string;
+    document_number?: string;
+    business_name?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    district?: string;
+    province?: string;
+    department?: string;
   };
   onSave?: (customerData: any) => void;
 }
@@ -19,15 +28,20 @@ interface CustomerRegistrationProps {
 const CustomerRegistration = ({ isOpen, onClose, initialData, onSave }: CustomerRegistrationProps) => {
   const { theme } = useTheme();
   const { showError, showSuccess, AlertComponent } = useAlert();
+  const { createCustomer, updateCustomer } = useCustomers();
   const [isConsulting, setIsConsulting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [customerData, setCustomerData] = useState({
-    tipoDocumento: 'RUC',
-    numeroDocumento: '',
-    razonSocial: initialData?.razonSocial || '',
-    nombreComercial: '',
-    direccion: '',
-    telefono: '',
-    email: '',
+    tipoDocumento: (initialData?.document_type as 'dni' | 'ruc' | 'passport' | 'other') || 'ruc',
+    numeroDocumento: initialData?.document_number || '',
+    razonSocial: initialData?.name || '',
+    nombreComercial: initialData?.business_name || '',
+    direccion: initialData?.address || '',
+    distrito: initialData?.district || '',
+    provincia: initialData?.province || 'Lima',
+    departamento: initialData?.department || 'Lima',
+    telefono: initialData?.phone || '',
+    email: initialData?.email || '',
     contacto: ''
   });
 
@@ -40,7 +54,7 @@ const CustomerRegistration = ({ isOpen, onClose, initialData, onSave }: Customer
     setIsConsulting(true);
     
     try {
-      if (customerData.tipoDocumento === 'RUC') {
+      if (customerData.tipoDocumento === 'ruc') {
         const result = await consultRUC(customerData.numeroDocumento);
         
         if (result.success && result.data) {
@@ -53,7 +67,7 @@ const CustomerRegistration = ({ isOpen, onClose, initialData, onSave }: Customer
         } else {
           showError('Error en consulta', result.message || 'No se pudo consultar el RUC');
         }
-      } else if (customerData.tipoDocumento === 'DNI') {
+      } else if (customerData.tipoDocumento === 'dni') {
         const result = await consultDNI(customerData.numeroDocumento);
         
         if (result.success && result.data) {
@@ -78,11 +92,20 @@ const CustomerRegistration = ({ isOpen, onClose, initialData, onSave }: Customer
 
   // Actualizar datos cuando cambie initialData
   React.useEffect(() => {
-    if (initialData?.razonSocial) {
-      setCustomerData(prev => ({
-        ...prev,
-        razonSocial: initialData.razonSocial || ''
-      }));
+    if (initialData) {
+      setCustomerData({
+        tipoDocumento: (initialData.document_type as 'dni' | 'ruc' | 'passport' | 'other') || 'ruc',
+        numeroDocumento: initialData.document_number || '',
+        razonSocial: initialData.name || '',
+        nombreComercial: initialData.business_name || '',
+        direccion: initialData.address || '',
+        distrito: initialData.district || '',
+        provincia: initialData.province || 'Lima',
+        departamento: initialData.department || 'Lima',
+        telefono: initialData.phone || '',
+        email: initialData.email || '',
+        contacto: ''
+      });
     }
   }, [initialData]);
 
@@ -97,10 +120,10 @@ const CustomerRegistration = ({ isOpen, onClose, initialData, onSave }: Customer
     if (!customerData.direccion.trim()) errors.push('Dirección es requerida');
     
     // Validar formato de documento
-    if (customerData.tipoDocumento === 'RUC' && customerData.numeroDocumento.length !== 11) {
+    if (customerData.tipoDocumento === 'ruc' && customerData.numeroDocumento.length !== 11) {
       errors.push('RUC debe tener 11 dígitos');
     }
-    if (customerData.tipoDocumento === 'DNI' && customerData.numeroDocumento.length !== 8) {
+    if (customerData.tipoDocumento === 'dni' && customerData.numeroDocumento.length !== 8) {
       errors.push('DNI debe tener 8 dígitos');
     }
     
@@ -112,7 +135,7 @@ const CustomerRegistration = ({ isOpen, onClose, initialData, onSave }: Customer
     return errors;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const errors = validateCustomer();
     
     if (errors.length > 0) {
@@ -120,19 +143,53 @@ const CustomerRegistration = ({ isOpen, onClose, initialData, onSave }: Customer
       return;
     }
     
-    console.log('Guardando cliente...', customerData);
-    // Aquí iría la lógica para guardar el cliente en la API
-    
-    showSuccess('Cliente registrado', 'El cliente se ha registrado correctamente');
-    
-    // Si hay callback onSave, ejecutarlo con los datos del cliente
-    setTimeout(() => {
-      if (onSave) {
-        onSave(customerData);
+    try {
+      setIsSaving(true);
+      
+      // Preparar datos para la API
+      const apiData: CreateCustomerData = {
+        document_type: customerData.tipoDocumento,
+        document_number: customerData.numeroDocumento,
+        name: customerData.razonSocial,
+        business_name: customerData.tipoDocumento === 'ruc' ? customerData.nombreComercial || undefined : undefined,
+        email: customerData.email || undefined,
+        phone: customerData.telefono || undefined,
+        address: customerData.direccion || undefined,
+        district: customerData.distrito || undefined,
+        province: customerData.provincia || undefined,
+        department: customerData.departamento || undefined,
+        country: 'PE',
+        tax_condition: 'domiciliado'
+      };
+      
+      const isEditing = initialData?.id;
+      let response;
+      
+      if (isEditing) {
+        response = await updateCustomer(initialData.id!, apiData);
+        showSuccess('Cliente actualizado', 'El cliente se ha actualizado correctamente');
       } else {
-        onClose();
+        response = await createCustomer(apiData);
+        showSuccess('Cliente registrado', 'El cliente se ha registrado correctamente');
       }
-    }, 1500);
+      
+      // Disparar evento para recargar clientes
+      window.dispatchEvent(new Event('customerCreated'));
+      
+      // Si hay callback onSave, ejecutarlo con los datos del cliente
+      setTimeout(() => {
+        if (onSave) {
+          onSave(response.data);
+        } else {
+          onClose();
+        }
+      }, 1500);
+      
+    } catch (error: any) {
+      showError('Error', [error.message || 'Error desconocido']);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -146,7 +203,9 @@ const CustomerRegistration = ({ isOpen, onClose, initialData, onSave }: Customer
     <div className="fixed inset-0 bg-white bg-opacity-20 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-backdrop-enter">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[95vh] flex flex-col animate-modal-enter">
         <div className="flex justify-between items-center p-4 sm:p-6 border-b">
-          <h2 className="text-lg sm:text-2xl font-semibold text-gray-900">Registro de Cliente</h2>
+          <h2 className="text-lg sm:text-2xl font-semibold text-gray-900">
+            {initialData?.id ? 'Editar Cliente' : 'Registro de Cliente'}
+          </h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -170,10 +229,10 @@ const CustomerRegistration = ({ isOpen, onClose, initialData, onSave }: Customer
                     onChange={(e) => handleInputChange('tipoDocumento', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   >
-                    <option value="RUC">RUC</option>
-                    <option value="DNI">DNI</option>
-                    <option value="CE">Carnet de Extranjería</option>
-                    <option value="PASAPORTE">Pasaporte</option>
+                    <option value="ruc">RUC</option>
+                    <option value="dni">DNI</option>
+                    <option value="passport">Pasaporte</option>
+                    <option value="other">Otro</option>
                   </select>
                 </div>
                 <div>
@@ -189,7 +248,7 @@ const CustomerRegistration = ({ isOpen, onClose, initialData, onSave }: Customer
                     <button
                       type="button"
                       onClick={handleDocumentConsult}
-                      disabled={isConsulting || !customerData.numeroDocumento.trim() || !['RUC', 'DNI'].includes(customerData.tipoDocumento)}
+                      disabled={isConsulting || !customerData.numeroDocumento.trim() || !['ruc', 'dni'].includes(customerData.tipoDocumento)}
                       className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors text-sm font-medium"
                       title="Consultar en SUNAT/RENIEC"
                     >
@@ -214,17 +273,17 @@ const CustomerRegistration = ({ isOpen, onClose, initialData, onSave }: Customer
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {customerData.tipoDocumento === 'RUC' ? 'Razón Social' : 'Nombres y Apellidos'}
+                    {customerData.tipoDocumento === 'ruc' ? 'Razón Social' : 'Nombres y Apellidos'}
                   </label>
                   <input
                     type="text"
                     value={customerData.razonSocial}
                     onChange={(e) => handleInputChange('razonSocial', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    placeholder={customerData.tipoDocumento === 'RUC' ? 'Ingrese la razón social' : 'Ingrese nombres y apellidos'}
+                    placeholder={customerData.tipoDocumento === 'ruc' ? 'Ingrese la razón social' : 'Ingrese nombres y apellidos'}
                   />
                 </div>
-                {customerData.tipoDocumento === 'RUC' && (
+                {customerData.tipoDocumento === 'ruc' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Nombre Comercial</label>
                     <input
@@ -238,13 +297,38 @@ const CustomerRegistration = ({ isOpen, onClose, initialData, onSave }: Customer
                 )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Dirección</label>
-                  <textarea
-                    value={customerData.direccion}
-                    onChange={(e) => handleInputChange('direccion', e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    placeholder="Ingrese la dirección completa"
-                  />
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={customerData.direccion}
+                      onChange={(e) => handleInputChange('direccion', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      placeholder="Dirección completa"
+                    />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <input
+                        type="text"
+                        value={customerData.distrito}
+                        onChange={(e) => handleInputChange('distrito', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        placeholder="Distrito"
+                      />
+                      <input
+                        type="text"
+                        value={customerData.provincia}
+                        onChange={(e) => handleInputChange('provincia', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        placeholder="Provincia"
+                      />
+                      <input
+                        type="text"
+                        value={customerData.departamento}
+                        onChange={(e) => handleInputChange('departamento', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        placeholder="Departamento"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -297,9 +381,15 @@ const CustomerRegistration = ({ isOpen, onClose, initialData, onSave }: Customer
           </button>
           <button
             onClick={handleSave}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors font-medium"
+            disabled={isSaving}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg transition-colors font-medium flex items-center space-x-2"
           >
-            Guardar Cliente
+            {isSaving && (
+              <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            )}
+            <span>{isSaving ? 'Guardando...' : (initialData?.id ? 'Actualizar Cliente' : 'Guardar Cliente')}</span>
           </button>
         </div>
         

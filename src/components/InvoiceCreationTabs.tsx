@@ -12,6 +12,10 @@ import InvoiceItems from './invoice/InvoiceItems';
 import InvoiceObservaciones from './invoice/InvoiceObservaciones';
 import CompanyIndicator from './CompanyIndicator';
 import { useProducts } from '../hooks/useProducts';
+import { useInvoices } from '../hooks/useInvoices';
+import { useCustomers } from '../hooks/useCustomers';
+import { CreateInvoiceData, CreateInvoiceItem } from '../services/invoiceTypes';
+import { useNotificationHelpers } from '../hooks/useNotificationHelpers';
 
 interface InvoiceCreationProps {
   isOpen: boolean;
@@ -28,7 +32,10 @@ interface InvoiceItem {
 
 const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
   const { taxConfig, calculateIGV, calculateTotal } = useTax();
-  const { getNextNumber } = useSeries();
+  const { getNextNumber, checkSequences } = useSeries();
+  const { activeCompany } = useCompany();
+  const [hasSequences, setHasSequences] = useState(true);
+  const [seriesLoading, setSeriesLoading] = useState(false);
   const { companyData, hasCompanies, loading } = useCompany();
   const { showError, showSuccess, AlertComponent } = useAlert();
   
@@ -40,8 +47,39 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
     }
   }, [isOpen, loading, hasCompanies, showError, onClose]);
   
-  // No renderizar si no hay empresas
-  if (!hasCompanies && !loading) {
+  // Verificar correlativos solo cuando se abre el modal por primera vez
+  React.useEffect(() => {
+    if (!isOpen) return;
+    
+    const checkCompanySequences = async () => {
+      if (!hasCompanies || !activeCompany?.id) return;
+      
+      try {
+        setSeriesLoading(true);
+        const sequences = await checkSequences(activeCompany.id);
+        setHasSequences(sequences);
+        
+        if (!sequences) {
+          showError('Correlativos requeridos', [
+            'Debe configurar al menos un correlativo antes de crear documentos.',
+            'Vaya a Configuración > Correlativos para agregar series de numeración.'
+          ]);
+          onClose();
+        }
+      } catch (error) {
+        console.error('Error checking sequences:', error);
+        setHasSequences(false);
+      } finally {
+        setSeriesLoading(false);
+      }
+    };
+    
+    // Solo verificar una vez cuando se abre
+    checkCompanySequences();
+  }, [isOpen]); // Removidas dependencias innecesarias
+  
+  // No renderizar si no hay empresas o correlativos
+  if ((!hasCompanies && !loading) || (!hasSequences && !seriesLoading && hasCompanies)) {
     return null;
   }
   const [activeTab, setActiveTab] = useState('comprobante');
@@ -53,6 +91,7 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
     fechaEmision: new Date().toISOString().split('T')[0],
     fechaVencimiento: '',
     cliente: {
+      id: null as number | null, // Store customer ID
       tipoDocumento: 'RUC',
       numeroDocumento: '',
       razonSocial: '',
@@ -77,14 +116,11 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
   const [showNewCustomerModal, setShowNewCustomerModal] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
   const { searchProducts } = useProducts();
+  const { createInvoice } = useInvoices();
+  const { searchCustomers } = useCustomers();
+  const { notifyInvoiceCreated } = useNotificationHelpers();
 
-  // Clientes disponibles
-  const availableCustomers = [
-    { id: '1', tipoDocumento: 'RUC', numeroDocumento: '20123456789', razonSocial: 'Empresa ABC S.A.C.', direccion: 'Av. Principal 123, Lima' },
-    { id: '2', tipoDocumento: 'DNI', numeroDocumento: '12345678', razonSocial: 'Juan Pérez García', direccion: 'Jr. Los Olivos 456, Lima' },
-    { id: '3', tipoDocumento: 'RUC', numeroDocumento: '20987654321', razonSocial: 'Comercial XYZ E.I.R.L.', direccion: 'Av. Comercio 789, Lima' },
-    { id: '4', tipoDocumento: 'DNI', numeroDocumento: '87654321', razonSocial: 'María González López', direccion: 'Calle Las Flores 321, Lima' }
-  ];
+
 
   // Cerrar dropdown al hacer clic fuera
   React.useEffect(() => {
@@ -99,46 +135,95 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  // Generar numeración automática al abrir
+  // Generar numeración automática cuando se abre o cambia tipo de comprobante
   React.useEffect(() => {
-    if (isOpen && !invoiceData.serie) {
-      const tipoSerie = invoiceData.tipoComprobante === 'FACTURA' ? 'facturas' : 'boletas';
-      const numeroCompleto = getNextNumber(tipoSerie as any);
-      const [serie, numero] = numeroCompleto.split('-');
-      setInvoiceData(prev => ({ ...prev, serie, numero }));
-    }
-  }, [isOpen, invoiceData.tipoComprobante, getNextNumber]);
+    if (!isOpen || !hasSequences || !activeCompany?.id) return;
+    
+    const generateNumber = async () => {
+      try {
+        const tipoSerie = invoiceData.tipoComprobante === 'FACTURA' ? 'facturas' : 'boletas';
+        const numeroCompleto = await getNextNumber(tipoSerie as any, activeCompany.id);
+        
+        if (!numeroCompleto || typeof numeroCompleto !== 'string') {
+          console.warn('No sequence available for document type');
+          // Set default values based on document type
+          const defaultSerie = invoiceData.tipoComprobante === 'FACTURA' ? 'F001' : 'B001';
+          setInvoiceData(prev => ({ ...prev, serie: defaultSerie, numero: '000001' }));
+          return;
+        }
+        
+        const parts = numeroCompleto.split('-');
+        if (parts.length !== 2) {
+          console.warn('Invalid sequence format, using defaults');
+          // Set default values based on document type
+          const defaultSerie = invoiceData.tipoComprobante === 'FACTURA' ? 'F001' : 'B001';
+          setInvoiceData(prev => ({ ...prev, serie: defaultSerie, numero: '000001' }));
+          return;
+        }
+        
+        const [serie, numero] = parts;
+        setInvoiceData(prev => ({ ...prev, serie, numero }));
+      } catch (error: any) {
+        console.error('Error generating number:', error);
+        // Set default values based on document type
+        const defaultSerie = invoiceData.tipoComprobante === 'FACTURA' ? 'F001' : 'B001';
+        setInvoiceData(prev => ({ ...prev, serie: defaultSerie, numero: '000001' }));
+      }
+    };
+    
+    // Always generate when document type changes or modal opens
+    generateNumber();
+  }, [isOpen, invoiceData.tipoComprobante]); // Keep constant dependency array size
 
   // Resetear formulario al cerrar
   React.useEffect(() => {
     if (!isOpen) {
-      resetForm();
+      resetForm().catch(console.error);
     }
   }, [isOpen]);
 
   // Función para resetear el formulario manteniendo serie y generando siguiente número
-  const resetForm = () => {
-    const tipoSerie = invoiceData.tipoComprobante === 'FACTURA' ? 'facturas' : 'boletas';
-    const numeroCompleto = getNextNumber(tipoSerie as any);
-    const [serie, numero] = numeroCompleto.split('-');
-    
-    setInvoiceData({
-      tipoComprobante: invoiceData.tipoComprobante,
-      serie,
-      numero,
-      fechaEmision: new Date().toISOString().split('T')[0],
-      fechaVencimiento: '',
-      cliente: {
-        tipoDocumento: 'RUC',
-        numeroDocumento: '',
-        razonSocial: '',
-        direccion: ''
-      },
-      moneda: 'PEN',
-      observaciones: ''
-    });
-    setItems([{ id: '1', descripcion: '', cantidad: 1, precio: 0, total: 0 }]);
-    setActiveTab('comprobante');
+  const resetForm = async () => {
+    try {
+      if (!activeCompany?.id) return;
+      
+      const tipoSerie = invoiceData.tipoComprobante === 'FACTURA' ? 'facturas' : 'boletas';
+      const numeroCompleto = await getNextNumber(tipoSerie as any, activeCompany.id);
+      
+      if (!numeroCompleto || typeof numeroCompleto !== 'string') {
+        console.warn('No sequence available for reset');
+        return;
+      }
+      
+      const parts = numeroCompleto.split('-');
+      if (parts.length !== 2) {
+        console.warn('Invalid sequence format for reset');
+        return;
+      }
+      
+      const [serie, numero] = parts;
+      
+      setInvoiceData({
+        tipoComprobante: invoiceData.tipoComprobante,
+        serie,
+        numero,
+        fechaEmision: new Date().toISOString().split('T')[0],
+        fechaVencimiento: '',
+        cliente: {
+          id: null,
+          tipoDocumento: 'RUC',
+          numeroDocumento: '',
+          razonSocial: '',
+          direccion: ''
+        },
+        moneda: 'PEN',
+        observaciones: ''
+      });
+      setItems([{ id: '1', descripcion: '', cantidad: 1, precio: 0, total: 0 }]);
+      setActiveTab('comprobante');
+    } catch (error) {
+      console.error('Error resetting form:', error);
+    }
   };
 
   if (!isOpen) return null;
@@ -230,36 +315,47 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
     setShowSearchResults(prev => ({ ...prev, [itemId]: false }));
   };
 
-  const searchCustomers = (searchTerm: string, inputRef?: HTMLInputElement) => {
+  const handleSearchCustomers = async (searchTerm: string, inputRef?: HTMLInputElement) => {
     if (searchTerm.length < 2) {
       setShowCustomerResults(false);
       return;
     }
     
-    const results = availableCustomers.filter(customer => 
-      customer.numeroDocumento.includes(searchTerm) ||
-      customer.razonSocial.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    
-    setCustomerSearchResults(results);
-    
-    // Calcular posición del dropdown
-    if (inputRef) {
-      const rect = inputRef.getBoundingClientRect();
-      setCustomerDropdownPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
-        width: Math.max(rect.width, 400)
-      });
+    try {
+      const results = await searchCustomers(searchTerm);
+      // Convertir formato API a formato esperado por el componente
+      const formattedResults = results.map(customer => ({
+        id: customer.id.toString(),
+        tipoDocumento: customer.document_type.toUpperCase(),
+        numeroDocumento: customer.document_number,
+        razonSocial: customer.name,
+        direccion: customer.address || ''
+      }));
+      
+      setCustomerSearchResults(formattedResults);
+      
+      // Calcular posición del dropdown
+      if (inputRef) {
+        const rect = inputRef.getBoundingClientRect();
+        setCustomerDropdownPosition({
+          top: rect.bottom + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: Math.max(rect.width, 400)
+        });
+      }
+      
+      setShowCustomerResults(formattedResults.length > 0);
+    } catch (error) {
+      console.error('Error searching customers:', error);
+      setShowCustomerResults(false);
     }
-    
-    setShowCustomerResults(searchTerm.length >= 2);
   };
 
   const selectCustomer = (customer: any) => {
     setInvoiceData(prev => ({
       ...prev,
       cliente: {
+        id: parseInt(customer.id), // Store the real customer ID
         tipoDocumento: customer.tipoDocumento,
         numeroDocumento: customer.numeroDocumento,
         razonSocial: customer.razonSocial,
@@ -317,7 +413,7 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
     return errors;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const errors = validateForm();
     
     if (errors.length > 0) {
@@ -325,49 +421,74 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
       return;
     }
     
-    const invoiceToSave = {
-      id: Date.now().toString(),
-      ...invoiceData,
-      items,
-      subtotal,
-      igv,
-      total,
-      fechaCreacion: new Date().toISOString()
-    };
-    
-    console.log('Guardando factura...', invoiceToSave);
-    
-    // Guardar en localStorage para facturas recientes
-    const savedInvoices = JSON.parse(localStorage.getItem('recentInvoices') || '[]');
-    savedInvoices.unshift(invoiceToSave);
-    // Mantener solo las últimas 10 facturas
-    if (savedInvoices.length > 10) {
-      savedInvoices.splice(10);
-    }
-    localStorage.setItem('recentInvoices', JSON.stringify(savedInvoices));
-    
-    // Generar PDF
     try {
-      generateInvoicePDF({
-        tipoComprobante: invoiceData.tipoComprobante,
-        serie: invoiceData.serie,
-        numero: invoiceData.numero,
-        fechaEmision: invoiceData.fechaEmision,
-        cliente: invoiceData.cliente,
-        items,
-        subtotal,
-        igv,
-        total,
-        observaciones: invoiceData.observaciones
-      }, companyData);
+      // Preparar datos para la API
+      const invoiceApiData: CreateInvoiceData = {
+        customer_id: invoiceData.cliente.id || 1, // Use stored customer ID or fallback
+        document_type: invoiceData.tipoComprobante === 'FACTURA' ? 'invoice' : 'receipt',
+        series: invoiceData.serie,
+        currency: invoiceData.moneda as 'PEN' | 'USD',
+        issue_date: invoiceData.fechaEmision,
+        due_date: invoiceData.fechaVencimiento || undefined,
+        notes: invoiceData.observaciones || undefined,
+        items: items.map(item => ({
+          product_id: 1, // TODO: Get real product ID from search
+          quantity: item.cantidad,
+          unit_price: item.precio,
+          discount_rate: 0
+        } as CreateInvoiceItem))
+      };
       
-      showSuccess('Factura generada', 'La factura se ha guardado y descargado correctamente');
+      // Crear factura en el backend
+      const response = await createInvoice(invoiceApiData);
       
-      // Resetear formulario después de guardar sin timeout para evitar re-renders
-      resetForm();
+      // Mostrar notificación de éxito
+      showSuccess('Factura creada', `Factura ${response.data.invoice_number} creada exitosamente`);
       
-    } catch (error) {
-      showError('Error al generar PDF', 'No se pudo generar el archivo PDF');
+      // Notificar creación de factura
+      notifyInvoiceCreated(response.data.invoice_number);
+      
+      // Disparar evento para recargar facturas
+      window.dispatchEvent(new Event('invoiceCreated'));
+      
+      // Generar PDF local como respaldo
+      try {
+        generateInvoicePDF({
+          tipoComprobante: invoiceData.tipoComprobante,
+          serie: invoiceData.serie,
+          numero: invoiceData.numero,
+          fechaEmision: invoiceData.fechaEmision,
+          cliente: {
+            tipoDocumento: invoiceData.cliente.tipoDocumento,
+            numeroDocumento: invoiceData.cliente.numeroDocumento,
+            razonSocial: invoiceData.cliente.razonSocial,
+            direccion: invoiceData.cliente.direccion
+          },
+          items: items.map(item => ({
+            descripcion: item.descripcion,
+            cantidad: Number(item.cantidad) || 0,
+            precio: Number(item.precio) || 0,
+            total: Number(item.total) || 0
+          })),
+          subtotal: Number(subtotal) || 0,
+          igv: Number(igv) || 0,
+          total: Number(total) || 0,
+          observaciones: invoiceData.observaciones
+        }, companyData);
+      } catch (pdfError) {
+        console.warn('Error generando PDF local:', pdfError);
+      }
+      
+      // Resetear formulario y cerrar modal
+      await resetForm();
+      
+      // Cerrar modal después de un breve delay para mostrar el mensaje de éxito
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+      
+    } catch (error: any) {
+      showError('Error creando factura', [error.message || 'Error desconocido']);
     }
   };
 
@@ -422,8 +543,7 @@ const InvoiceCreation = ({ isOpen, onClose }: InvoiceCreationProps) => {
             <InvoiceCliente 
               invoiceData={invoiceData}
               setInvoiceData={setInvoiceData}
-              availableCustomers={availableCustomers}
-              searchCustomers={searchCustomers}
+              searchCustomers={handleSearchCustomers}
               selectCustomer={selectCustomer}
               customerSearchResults={customerSearchResults}
               showCustomerResults={showCustomerResults}

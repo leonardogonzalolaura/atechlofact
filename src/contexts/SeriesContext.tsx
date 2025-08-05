@@ -1,5 +1,6 @@
 'use client'
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { sequenceService } from '../services/sequenceService';
 
 interface SeriesConfig {
   facturas: { serie: string; numero: number };
@@ -11,8 +12,9 @@ interface SeriesConfig {
 
 interface SeriesContextType {
   seriesConfig: SeriesConfig;
-  getNextNumber: (tipo: keyof SeriesConfig) => string;
+  getNextNumber: (tipo: keyof SeriesConfig, companyId?: string) => Promise<string>;
   updateSeries: (tipo: keyof SeriesConfig, serie: string, numero: number) => void;
+  checkSequences: (companyId: string) => Promise<boolean>;
 }
 
 const defaultSeriesConfig: SeriesConfig = {
@@ -45,20 +47,49 @@ export const SeriesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [seriesConfig]);
 
-  const getNextNumber = (tipo: keyof SeriesConfig): string => {
-    const config = seriesConfig[tipo];
-    const numeroFormateado = config.numero.toString().padStart(6, '0');
+  const getNextNumber = async (tipo: keyof SeriesConfig, companyId?: string): Promise<string> => {
+    if (!companyId) {
+      throw new Error('No hay empresa activa');
+    }
     
-    // Incrementar el número para la próxima vez
-    setSeriesConfig(prev => ({
-      ...prev,
-      [tipo]: {
-        ...prev[tipo],
-        numero: prev[tipo].numero + 1
-      }
-    }));
-    
-    return `${config.serie}-${numeroFormateado}`;
+    try {
+      // Map tipo to document_type
+      const documentTypeMap = {
+        facturas: 'invoice',
+        boletas: 'receipt',
+        notasCredito: 'credit_note',
+        notasDebito: 'debit_note',
+        guiasRemision: 'quotation' // Using quotation as placeholder
+      };
+      
+      const documentType = documentTypeMap[tipo] as any;
+      const config = seriesConfig[tipo];
+      
+      // Try to get next number from API
+      const response = await sequenceService.getNextNumber(companyId, {
+        document_type: documentType,
+        series: config.serie
+      });
+      
+      return response.data.formatted_number;
+    } catch (error) {
+      console.warn('Could not get sequence from API, using local fallback:', error);
+      
+      // Fallback to local logic
+      const config = seriesConfig[tipo];
+      const numeroFormateado = config.numero.toString().padStart(6, '0');
+      
+      // Incrementar el número para la próxima vez
+      setSeriesConfig(prev => ({
+        ...prev,
+        [tipo]: {
+          ...prev[tipo],
+          numero: prev[tipo].numero + 1
+        }
+      }));
+      
+      return `${config.serie}-${numeroFormateado}`;
+    }
   };
 
   const updateSeries = (tipo: keyof SeriesConfig, serie: string, numero: number) => {
@@ -68,11 +99,22 @@ export const SeriesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }));
   };
 
+  const checkSequences = async (companyId: string): Promise<boolean> => {
+    try {
+      const response = await sequenceService.getSequences(companyId);
+      return response.data.length > 0;
+    } catch (error) {
+      console.warn('Could not check sequences:', error);
+      return false;
+    }
+  };
+
   return (
     <SeriesContext.Provider value={{
       seriesConfig,
       getNextNumber,
-      updateSeries
+      updateSeries,
+      checkSequences
     }}>
       {children}
     </SeriesContext.Provider>

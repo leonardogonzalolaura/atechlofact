@@ -11,6 +11,17 @@ interface InvoicePreviewProps {
 const InvoicePreview = ({ isOpen, onClose, invoiceData }: InvoicePreviewProps) => {
   if (!isOpen || !invoiceData) return null;
 
+  const getDocumentTypeLabel = (documentType: string) => {
+    const types: {[key: string]: string} = {
+      'invoice': 'FACTURA',
+      'receipt': 'BOLETA',
+      'credit_note': 'NOTA DE CRÉDITO',
+      'debit_note': 'NOTA DE DÉBITO',
+      'quotation': 'COTIZACIÓN'
+    };
+    return types[documentType] || documentType.toUpperCase();
+  };
+
   const handlePrint = () => {
     const printWindow = window.open('', '_blank', 'width=800,height=600');
     
@@ -35,7 +46,7 @@ const InvoicePreview = ({ isOpen, onClose, invoiceData }: InvoicePreviewProps) =
       <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[95vh] flex flex-col">
         <div className="flex justify-between items-center p-4 border-b no-print">
           <h2 className="text-xl font-semibold text-gray-900">
-            Vista Previa - {invoiceData.tipoComprobante} {invoiceData.serie}-{invoiceData.numero}
+            Vista Previa - {invoiceData.tipoComprobante || getDocumentTypeLabel(invoiceData.document_type)} {invoiceData.invoice_number || `${invoiceData.serie}-${invoiceData.numero}`}
           </h2>
           <div className="flex items-center space-x-2">
             <button
@@ -64,7 +75,7 @@ const InvoicePreview = ({ isOpen, onClose, invoiceData }: InvoicePreviewProps) =
 
         <div className="flex justify-between items-center space-x-3 p-4 border-t bg-white no-print">
           <div className="text-sm text-gray-700">
-            Documento: {invoiceData.serie}-{invoiceData.numero} | Cliente: {invoiceData.cliente.razonSocial}
+            Documento: {invoiceData.invoice_number || `${invoiceData.serie}-${invoiceData.numero}`} | Cliente: {invoiceData.cliente?.razonSocial || invoiceData.customer?.name || 'Sin cliente'}
           </div>
           <div className="flex space-x-3">
             <button

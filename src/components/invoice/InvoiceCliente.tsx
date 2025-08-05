@@ -5,7 +5,6 @@ import CustomerRegistration from '../customer/CustomerRegistration';
 interface InvoiceClienteProps {
   invoiceData: any;
   setInvoiceData: (data: any) => void;
-  availableCustomers: any[];
   searchCustomers: (term: string, inputRef?: HTMLInputElement) => void;
   selectCustomer: (customer: any) => void;
   customerSearchResults: any[];

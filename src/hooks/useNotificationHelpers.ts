@@ -114,17 +114,37 @@ export const useNotificationHelpers = () => {
   };
 
   // Invoice notifications
-  const notifyInvoiceCreated = (invoiceNumber: string) => {
-    return notificationService.success(
+  const notifyInvoiceCreated = async (invoiceNumber: string) => {
+    // Create local notification
+    const localId = notificationService.success(
       'Factura Creada',
       `Factura ${invoiceNumber} generada exitosamente`,
       {
         metadata: { type: 'invoice-created', invoiceNumber }
       }
     );
+    
+    // Also create server-side notification
+    try {
+      await notificationApiService.createNotification({
+        type: 'success',
+        priority: 'medium',
+        title: 'Factura Creada',
+        message: `Factura ${invoiceNumber} generada exitosamente`,
+        company_id: activeCompany?.id ? parseInt(activeCompany.id) : undefined,
+        metadata: {
+          type: 'invoice-created',
+          invoiceNumber
+        }
+      });
+    } catch (error) {
+      console.error('Error creating server-side invoice notification:', error);
+    }
+    
+    return localId;
   };
 
-  const notifyInvoiceDue = (invoices: Array<{number: string, dueDate: string, amount: number}>) => {
+  const notifyInvoiceDue = async (invoices: Array<{number: string, dueDate: string, amount: number}>) => {
     const actions: NotificationAction[] = [
       {
         label: 'Ver Facturas',
@@ -138,7 +158,8 @@ export const useNotificationHelpers = () => {
       }
     ];
 
-    return notificationService.warning(
+    // Create local notification
+    const localId = notificationService.warning(
       'Facturas por Vencer',
       `${invoices.length} factura${invoices.length > 1 ? 's vencen' : ' vence'} pronto`,
       {
@@ -150,6 +171,26 @@ export const useNotificationHelpers = () => {
         }
       }
     );
+    
+    // Also create server-side notification
+    try {
+      await notificationApiService.createNotification({
+        type: 'warning',
+        priority: 'high',
+        title: 'Facturas por Vencer',
+        message: `${invoices.length} factura${invoices.length > 1 ? 's vencen' : ' vence'} pronto`,
+        company_id: activeCompany?.id ? parseInt(activeCompany.id) : undefined,
+        metadata: {
+          type: 'invoice-due',
+          invoiceNumbers: invoices.map(i => i.number),
+          count: invoices.length
+        }
+      });
+    } catch (error) {
+      console.error('Error creating server-side invoice due notification:', error);
+    }
+    
+    return localId;
   };
 
   // Payment notifications

@@ -19,7 +19,9 @@ import RemissionGuideCreation from './RemissionGuideCreationTabs';
 import ProductRegistration from './product/ProductRegistration';
 import CustomerList from './customer/CustomerList';
 import ProductList from './product/ProductList';
+import InvoiceList from './InvoiceList';
 import ReportsDashboard from './ReportsDashboard';
+import SequenceAlert from './SequenceAlert';
 import { InvoicePreview } from './invoice';
 import CompanyRequiredModal from './CompanyRequiredModal';
 import LoadingSpinner from './LoadingSpinner';
@@ -39,16 +41,27 @@ const Dashboard = () => {
     const [isProductRegistrationOpen, setIsProductRegistrationOpen] = useState(false);
     const [isCustomerListOpen, setIsCustomerListOpen] = useState(false);
     const [isProductListOpen, setIsProductListOpen] = useState(false);
+    const [isInvoiceListOpen, setIsInvoiceListOpen] = useState(false);
     const [isReportsDashboardOpen, setIsReportsDashboardOpen] = useState(false);
     const [showInvoicePreview, setShowInvoicePreview] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     const [showCompanyRequired, setShowCompanyRequired] = useState(false);
     
-    const { hasCompanies, loading } = useCompany();
+    const { hasCompanies, loading, activeCompany } = useCompany();
 
-    const handlePreviewInvoice = (invoice: any) => {
-        setSelectedInvoice(invoice);
-        setShowInvoicePreview(true);
+    const handlePreviewInvoice = async (invoice: any) => {
+        try {
+            // Load full invoice details including items
+            const { invoiceService } = await import('../services/invoiceService');
+            const fullInvoice = await invoiceService.getInvoice(activeCompany?.id || '', invoice.id);
+            setSelectedInvoice(fullInvoice.data);
+            setShowInvoicePreview(true);
+        } catch (error) {
+            console.error('Error loading invoice details:', error);
+            // Fallback to basic invoice data
+            setSelectedInvoice(invoice);
+            setShowInvoicePreview(true);
+        }
     };
 
     const checkCompanyAndOpen = (openFunction: () => void) => {
@@ -97,8 +110,10 @@ const Dashboard = () => {
         
         const handleOpenInvoiceList = (event: any) => {
             const filter = event.detail?.filter;
-            // TODO: Open invoice list with filter
-            console.log('Open invoice list with filter:', filter);
+            checkCompanyAndOpen(() => {
+                setIsInvoiceListOpen(true);
+                // TODO: Apply filter when InvoiceList opens
+            });
         };
         
         window.addEventListener('openProductRegistration', handleOpenProductRegistration);
@@ -140,6 +155,7 @@ const Dashboard = () => {
                     </button>
                 </div>
                 <StatsCards />
+                <SequenceAlert onOpenSettings={() => setIsSettingsOpen(true)} />
                 {loading ? (
                     <div className="bg-white rounded-lg shadow p-6">
                         <LoadingSpinner />
@@ -154,6 +170,8 @@ const Dashboard = () => {
                         onProductClick={() => checkCompanyAndOpen(() => setIsProductRegistrationOpen(true))}
                         onCustomerListClick={() => checkCompanyAndOpen(() => setIsCustomerListOpen(true))}
                         onProductListClick={() => checkCompanyAndOpen(() => setIsProductListOpen(true))}
+                        onInvoiceListClick={() => checkCompanyAndOpen(() => setIsInvoiceListOpen(true))}
+                        onOpenSettings={() => setIsSettingsOpen(true)}
                     />
                 )}
                 <RecentInvoices onPreviewInvoice={handlePreviewInvoice} />
@@ -210,6 +228,10 @@ const Dashboard = () => {
             <ProductList 
                 isOpen={isProductListOpen} 
                 onClose={() => setIsProductListOpen(false)} 
+            />
+            <InvoiceList 
+                isOpen={isInvoiceListOpen} 
+                onClose={() => setIsInvoiceListOpen(false)} 
             />
             <ReportsDashboard 
                 isOpen={isReportsDashboardOpen} 

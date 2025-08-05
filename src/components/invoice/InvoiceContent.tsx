@@ -11,6 +11,17 @@ const InvoiceContent = ({ invoiceData }: InvoiceContentProps) => {
   const { taxConfig } = useTax();
   const { companyData } = useCompany();
 
+  const getDocumentTypeLabel = (documentType: string) => {
+    const types: {[key: string]: string} = {
+      'invoice': 'FACTURA',
+      'receipt': 'BOLETA',
+      'credit_note': 'NOTA DE CRÉDITO',
+      'debit_note': 'NOTA DE DÉBITO',
+      'quotation': 'COTIZACIÓN'
+    };
+    return types[documentType] || documentType.toUpperCase();
+  };
+
   return (
     <div className="print-content">
       {/* Header SUNAT Standard */}
@@ -36,8 +47,8 @@ const InvoiceContent = ({ invoiceData }: InvoiceContentProps) => {
         <div style={{display: 'table-cell', width: '30%', verticalAlign: 'top', textAlign: 'center', paddingLeft: '10px'}}>
           <div className="border-2 border-black p-3">
             <div className="font-bold text-sm mb-1 text-black">R.U.C. N° {companyData.ruc}</div>
-            <div className="font-bold text-lg text-black">{invoiceData.tipoComprobante}</div>
-            <div className="font-bold text-lg text-black">{invoiceData.serie} - {invoiceData.numero}</div>
+            <div className="font-bold text-lg text-black">{invoiceData.tipoComprobante || getDocumentTypeLabel(invoiceData.document_type) || 'DOCUMENTO'}</div>
+            <div className="font-bold text-lg text-black">{invoiceData.invoice_number || `${invoiceData.serie} - ${invoiceData.numero}`}</div>
           </div>
         </div>
       </div>
@@ -47,29 +58,29 @@ const InvoiceContent = ({ invoiceData }: InvoiceContentProps) => {
         <div style={{display: 'table', width: '100%'}}>
           <div style={{display: 'table-cell', width: '70%', verticalAlign: 'top', paddingRight: '20px'}}>
             <div className="mb-3">
-              <strong className="text-black">Señor(es):</strong> <span className="text-black">{invoiceData.cliente.razonSocial}</span>
+              <strong className="text-black">Señor(es):</strong> <span className="text-black">{invoiceData.cliente?.razonSocial || invoiceData.customer?.name || 'Sin cliente'}</span>
             </div>
             <div className="mb-3">
-              <strong className="text-black">{invoiceData.cliente.tipoDocumento}:</strong> <span className="text-black">{invoiceData.cliente.numeroDocumento}</span>
+              <strong className="text-black">{invoiceData.cliente?.tipoDocumento || 'DOC'}:</strong> <span className="text-black">{invoiceData.cliente?.numeroDocumento || invoiceData.customer?.document_number || 'Sin documento'}</span>
             </div>
             <div className="mb-3">
-              <strong className="text-black">Dirección:</strong> <span className="text-black">{invoiceData.cliente.direccion}</span>
+              <strong className="text-black">Dirección:</strong> <span className="text-black">{invoiceData.cliente?.direccion || invoiceData.customer?.address || 'Sin dirección'}</span>
             </div>
           </div>
           <div style={{display: 'table-cell', width: '30%', verticalAlign: 'top'}}>
             <div className="mb-3">
               <strong className="text-black">Fecha de Emisión:</strong><br/>
-              <span className="text-black">{new Date(invoiceData.fechaEmision).toLocaleDateString('es-PE')}</span>
+              <span className="text-black">{new Date(invoiceData.fechaEmision || invoiceData.issue_date || new Date()).toLocaleDateString('es-PE')}</span>
             </div>
-            {invoiceData.fechaVencimiento && (
+            {(invoiceData.fechaVencimiento || invoiceData.due_date) && (
               <div className="mb-3">
                 <strong className="text-black">Fecha de Vencimiento:</strong><br/>
-                <span className="text-black">{new Date(invoiceData.fechaVencimiento).toLocaleDateString('es-PE')}</span>
+                <span className="text-black">{new Date(invoiceData.fechaVencimiento || invoiceData.due_date).toLocaleDateString('es-PE')}</span>
               </div>
             )}
             <div className="mb-3">
               <strong className="text-black">Moneda:</strong><br/>
-              <span className="text-black">{invoiceData.moneda === 'PEN' ? 'SOLES' : 'DOLARES AMERICANOS'}</span>
+              <span className="text-black">{(invoiceData.moneda || invoiceData.currency) === 'PEN' ? 'SOLES' : 'DOLARES AMERICANOS'}</span>
             </div>
           </div>
         </div>
@@ -87,16 +98,16 @@ const InvoiceContent = ({ invoiceData }: InvoiceContentProps) => {
             </tr>
           </thead>
           <tbody>
-            {invoiceData.items.map((item: any, index: number) => (
-              <tr key={item.id}>
-                <td className="px-3 py-2 text-sm text-center text-black">{item.cantidad.toFixed(2)}</td>
-                <td className="px-3 py-2 text-sm text-black">{item.descripcion}</td>
-                <td className="px-3 py-2 text-sm text-right text-black">{item.precio.toFixed(2)}</td>
-                <td className="px-3 py-2 text-sm text-right text-black">{item.total.toFixed(2)}</td>
+            {(invoiceData.items || invoiceData.invoice_items || []).map((item: any, index: number) => (
+              <tr key={item.id || index}>
+                <td className="px-3 py-2 text-sm text-center text-black">{(Number(item.cantidad || item.quantity) || 0).toFixed(2)}</td>
+                <td className="px-3 py-2 text-sm text-black">{item.descripcion || item.description || item.product?.name || item.product?.description || 'Sin descripción'}</td>
+                <td className="px-3 py-2 text-sm text-right text-black">{(Number(item.precio || item.unit_price) || 0).toFixed(2)}</td>
+                <td className="px-3 py-2 text-sm text-right text-black">{(Number(item.total || item.total_amount) || 0).toFixed(2)}</td>
               </tr>
             ))}
             {/* Filas vacías para completar espacio */}
-            {Array.from({length: Math.max(0, 8 - invoiceData.items.length)}).map((_, index) => (
+            {Array.from({length: Math.max(0, 8 - (invoiceData.items || invoiceData.invoice_items || []).length)}).map((_, index) => (
               <tr key={`empty-${index}`}>
                 <td className="px-3 py-2 text-sm">&nbsp;</td>
                 <td className="px-3 py-2 text-sm">&nbsp;</td>
@@ -114,12 +125,12 @@ const InvoiceContent = ({ invoiceData }: InvoiceContentProps) => {
           <div style={{display: 'table-cell', width: '60%', verticalAlign: 'top', padding: '15px'}}>
             <div className="mb-4">
               <strong className="text-black text-xs">SON:</strong>
-              <span className="text-black text-xs font-bold">{getAmountInWords(invoiceData.total, invoiceData.moneda)}</span>
+              <span className="text-black text-xs font-bold">{getAmountInWords(Number(invoiceData.total || invoiceData.total_amount) || 0, invoiceData.moneda || invoiceData.currency || 'PEN')}</span>
             </div>
-            {invoiceData.observaciones && (
+            {(invoiceData.observaciones || invoiceData.notes) && (
               <div>
                 <strong className="text-black">OBSERVACIONES:</strong><br/>
-                <span className="text-black">{invoiceData.observaciones}</span>
+                <span className="text-black">{invoiceData.observaciones || invoiceData.notes}</span>
               </div>
             )}
           </div>
@@ -129,15 +140,15 @@ const InvoiceContent = ({ invoiceData }: InvoiceContentProps) => {
                 <tbody>
                   <tr>
                     <td className="px-3 py-2 text-sm font-bold text-black">SUB TOTAL</td>
-                    <td className="px-3 py-2 text-sm text-right text-black">{invoiceData.subtotal.toFixed(2)}</td>
+                    <td className="px-3 py-2 text-sm text-right text-black">{(Number(invoiceData.subtotal || invoiceData.subtotal_amount) || 0).toFixed(2)}</td>
                   </tr>
                   <tr>
                     <td className="px-3 py-2 text-sm font-bold text-black">{taxConfig.igvLabel} {(taxConfig.igvRate * 100).toFixed(0)}%</td>
-                    <td className="px-3 py-2 text-sm text-right text-black">{invoiceData.igv.toFixed(2)}</td>
+                    <td className="px-3 py-2 text-sm text-right text-black">{(Number(invoiceData.igv || invoiceData.tax_amount) || 0).toFixed(2)}</td>
                   </tr>
                   <tr className="bg-gray-100">
-                    <td className="px-3 py-3 text-base font-bold text-black">TOTAL A PAGAR {invoiceData.moneda}</td>
-                    <td className="px-3 py-3 text-base font-bold text-right text-black">{invoiceData.total.toFixed(2)}</td>
+                    <td className="px-3 py-3 text-base font-bold text-black">TOTAL A PAGAR {invoiceData.moneda || invoiceData.currency || 'PEN'}</td>
+                    <td className="px-3 py-3 text-base font-bold text-right text-black">{(Number(invoiceData.total || invoiceData.total_amount) || 0).toFixed(2)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -148,7 +159,7 @@ const InvoiceContent = ({ invoiceData }: InvoiceContentProps) => {
 
       {/* Footer SUNAT */}
       <div className="mt-4 text-center text-xs text-gray-700 space-y-1">
-        <p><strong>Representación Impresa de la {invoiceData.tipoComprobante} ELECTRÓNICA</strong></p>
+        <p><strong>Representación Impresa de la {invoiceData.tipoComprobante || getDocumentTypeLabel(invoiceData.document_type) || 'FACTURA'} ELECTRÓNICA</strong></p>
         <p>Consulte su documento en: www.sunat.gob.pe</p>
         <p>Autorizado mediante Resolución de Intendencia N° 034-005-0000185/SUNAT</p>
       </div>
