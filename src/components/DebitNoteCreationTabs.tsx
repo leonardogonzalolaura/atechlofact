@@ -3,7 +3,10 @@ import React, { useState, useRef } from 'react';
 
 import { useTax } from '../contexts/TaxContext';
 import { useSeries } from '../contexts/SeriesContext';
+import { useCompany } from '../contexts/CompanyContext';
 import { useAlert } from './Alert';
+import { useProducts } from '../hooks/useProducts';
+import { useCustomers } from '../hooks/useCustomers';
 import DocumentHeader from './shared/DocumentHeader';
 import TabNavigation from './shared/TabNavigation';
 import NavigationButtons from './shared/NavigationButtons';
@@ -27,7 +30,10 @@ interface DebitNoteItem {
 const DebitNoteCreation = ({ isOpen, onClose }: DebitNoteCreationProps) => {
   const { taxConfig, calculateIGV, calculateTotal } = useTax();
   const { getNextNumber } = useSeries();
+  const { activeCompany } = useCompany();
   const { showError, showSuccess, AlertComponent } = useAlert();
+  const { searchProducts } = useProducts();
+  const { searchCustomers } = useCustomers();
   const [activeTab, setActiveTab] = useState('documento');
   
   const [debitNoteData, setDebitNoteData] = useState({
@@ -112,12 +118,37 @@ const DebitNoteCreation = ({ isOpen, onClose }: DebitNoteCreationProps) => {
 
   // Generar numeración automática
   React.useEffect(() => {
-    if (isOpen && !debitNoteData.serie) {
-      const numeroCompleto = getNextNumber('notasDebito');
-      const [serie, numero] = numeroCompleto.split('-');
-      setDebitNoteData(prev => ({ ...prev, serie, numero }));
+    if (!isOpen || !activeCompany?.id) return;
+    
+    const generateNumber = async () => {
+      try {
+        const numeroCompleto = await getNextNumber('notasDebito', activeCompany.id);
+        
+        if (!numeroCompleto || typeof numeroCompleto !== 'string') {
+          console.warn('No sequence available for debit note');
+          setDebitNoteData(prev => ({ ...prev, serie: 'ND01', numero: '000001' }));
+          return;
+        }
+        
+        const parts = numeroCompleto.split('-');
+        if (parts.length !== 2) {
+          console.warn('Invalid sequence format, using defaults');
+          setDebitNoteData(prev => ({ ...prev, serie: 'ND01', numero: '000001' }));
+          return;
+        }
+        
+        const [serie, numero] = parts;
+        setDebitNoteData(prev => ({ ...prev, serie, numero }));
+      } catch (error: any) {
+        console.error('Error generating debit note number:', error);
+        setDebitNoteData(prev => ({ ...prev, serie: 'ND01', numero: '000001' }));
+      }
+    };
+    
+    if (!debitNoteData.serie) {
+      generateNumber();
     }
-  }, [isOpen, getNextNumber]);
+  }, [isOpen, activeCompany?.id]);
 
   // Reset al cerrar
   React.useEffect(() => {
@@ -161,7 +192,7 @@ const DebitNoteCreation = ({ isOpen, onClose }: DebitNoteCreationProps) => {
     }));
   };
 
-  const searchProducts = (searchTerm: string, itemId: string) => {
+  const handleSearchProducts = (searchTerm: string, itemId: string) => {
     if (searchTerm.length < 2) {
       setShowSearchResults(prev => ({ ...prev, [itemId]: false }));
       return;
@@ -204,7 +235,7 @@ const DebitNoteCreation = ({ isOpen, onClose }: DebitNoteCreationProps) => {
     setShowSearchResults(prev => ({ ...prev, [itemId]: false }));
   };
 
-  const searchCustomers = (searchTerm: string, inputRef?: HTMLInputElement) => {
+  const handleSearchCustomers = (searchTerm: string, inputRef?: HTMLInputElement) => {
     if (searchTerm.length < 2) {
       setShowCustomerResults(false);
       return;
@@ -372,7 +403,7 @@ const DebitNoteCreation = ({ isOpen, onClose }: DebitNoteCreationProps) => {
               invoiceData={{cliente: debitNoteData.cliente}}
               setInvoiceData={(data) => setDebitNoteData(prev => ({...prev, cliente: data.cliente}))}
               availableCustomers={availableCustomers}
-              searchCustomers={searchCustomers}
+              searchCustomers={handleSearchCustomers}
               selectCustomer={selectCustomer}
               customerSearchResults={customerSearchResults}
               showCustomerResults={showCustomerResults}
@@ -393,7 +424,7 @@ const DebitNoteCreation = ({ isOpen, onClose }: DebitNoteCreationProps) => {
               addItem={addItem}
               removeItem={removeItem}
               updateItem={updateItem}
-              searchProducts={searchProducts}
+              searchProducts={handleSearchProducts}
               selectProductFromSearch={selectProductFromSearch}
               openProductSelector={openProductSelector}
               searchResults={searchResults}

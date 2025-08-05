@@ -2,7 +2,10 @@
 import React, { useState, useRef } from 'react';
 
 import { useSeries } from '../contexts/SeriesContext';
+import { useCompany } from '../contexts/CompanyContext';
 import { useAlert } from './Alert';
+import { useProducts } from '../hooks/useProducts';
+import { useCustomers } from '../hooks/useCustomers';
 import DocumentHeader from './shared/DocumentHeader';
 import TabNavigation from './shared/TabNavigation';
 import NavigationButtons from './shared/NavigationButtons';
@@ -25,7 +28,10 @@ interface RemissionGuideItem {
 
 const RemissionGuideCreation = ({ isOpen, onClose }: RemissionGuideCreationProps) => {
   const { getNextNumber } = useSeries();
+  const { activeCompany } = useCompany();
   const { showError, showSuccess, AlertComponent } = useAlert();
+  const { searchProducts } = useProducts();
+  const { searchCustomers } = useCustomers();
   const [activeTab, setActiveTab] = useState('documento');
   
   const [guideData, setGuideData] = useState({
@@ -132,12 +138,37 @@ const RemissionGuideCreation = ({ isOpen, onClose }: RemissionGuideCreationProps
 
   // Generar numeración automática
   React.useEffect(() => {
-    if (isOpen && !guideData.serie) {
-      const numeroCompleto = getNextNumber('guiasRemision');
-      const [serie, numero] = numeroCompleto.split('-');
-      setGuideData(prev => ({ ...prev, serie, numero }));
+    if (!isOpen || !activeCompany?.id) return;
+    
+    const generateNumber = async () => {
+      try {
+        const numeroCompleto = await getNextNumber('guiasRemision', activeCompany.id);
+        
+        if (!numeroCompleto || typeof numeroCompleto !== 'string') {
+          console.warn('No sequence available for remission guide');
+          setGuideData(prev => ({ ...prev, serie: 'T001', numero: '000001' }));
+          return;
+        }
+        
+        const parts = numeroCompleto.split('-');
+        if (parts.length !== 2) {
+          console.warn('Invalid sequence format, using defaults');
+          setGuideData(prev => ({ ...prev, serie: 'T001', numero: '000001' }));
+          return;
+        }
+        
+        const [serie, numero] = parts;
+        setGuideData(prev => ({ ...prev, serie, numero }));
+      } catch (error: any) {
+        console.error('Error generating remission guide number:', error);
+        setGuideData(prev => ({ ...prev, serie: 'T001', numero: '000001' }));
+      }
+    };
+    
+    if (!guideData.serie) {
+      generateNumber();
     }
-  }, [isOpen, getNextNumber]);
+  }, [isOpen, activeCompany?.id]);
 
   // Reset al cerrar
   React.useEffect(() => {
@@ -173,7 +204,7 @@ const RemissionGuideCreation = ({ isOpen, onClose }: RemissionGuideCreationProps
     }));
   };
 
-  const searchProducts = (searchTerm: string, itemId: string) => {
+  const handleSearchProducts = (searchTerm: string, itemId: string) => {
     if (searchTerm.length < 2) {
       setShowSearchResults(prev => ({ ...prev, [itemId]: false }));
       return;
@@ -214,7 +245,7 @@ const RemissionGuideCreation = ({ isOpen, onClose }: RemissionGuideCreationProps
     setShowSearchResults(prev => ({ ...prev, [itemId]: false }));
   };
 
-  const searchCustomers = (searchTerm: string, inputRef?: HTMLInputElement) => {
+  const handleSearchCustomers = (searchTerm: string, inputRef?: HTMLInputElement) => {
     if (searchTerm.length < 2) {
       setShowCustomerResults(false);
       return;
@@ -501,7 +532,7 @@ const RemissionGuideCreation = ({ isOpen, onClose }: RemissionGuideCreationProps
               invoiceData={{cliente: guideData.cliente}}
               setInvoiceData={(data) => setGuideData(prev => ({...prev, cliente: data.cliente}))}
               availableCustomers={availableCustomers}
-              searchCustomers={searchCustomers}
+              searchCustomers={handleSearchCustomers}
               selectCustomer={selectCustomer}
               customerSearchResults={customerSearchResults}
               showCustomerResults={showCustomerResults}
@@ -522,7 +553,7 @@ const RemissionGuideCreation = ({ isOpen, onClose }: RemissionGuideCreationProps
               addItem={addItem}
               removeItem={removeItem}
               updateItem={updateItem}
-              searchProducts={searchProducts}
+              searchProducts={handleSearchProducts}
               selectProductFromSearch={selectProductFromSearch}
               openProductSelector={openProductSelector}
               searchResults={searchResults}
