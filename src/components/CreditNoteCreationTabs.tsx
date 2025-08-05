@@ -5,6 +5,8 @@ import { useTax } from '../contexts/TaxContext';
 import { useSeries } from '../contexts/SeriesContext';
 import { useCompany } from '../contexts/CompanyContext';
 import { useAlert } from './Alert';
+import { useProducts } from '../hooks/useProducts';
+import { useCustomers } from '../hooks/useCustomers';
 import DocumentHeader from './shared/DocumentHeader';
 import TabNavigation from './shared/TabNavigation';
 import NavigationButtons from './shared/NavigationButtons';
@@ -30,6 +32,8 @@ const CreditNoteCreation = ({ isOpen, onClose }: CreditNoteCreationProps) => {
   const { getNextNumber } = useSeries();
   const { activeCompany } = useCompany();
   const { showError, showSuccess, AlertComponent } = useAlert();
+  const { searchProducts } = useProducts();
+  const { searchCustomers } = useCustomers();
   const [activeTab, setActiveTab] = useState('documento');
   
   const [creditNoteData, setCreditNoteData] = useState({
@@ -70,22 +74,7 @@ const CreditNoteCreation = ({ isOpen, onClose }: CreditNoteCreationProps) => {
   const [showNewCustomerModal, setShowNewCustomerModal] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
 
-  // Datos mock (reutilizando de factura)
-  const availableProducts = [
-    { id: '1', codigo: 'PROD001', descripcion: 'Laptop HP Pavilion 15.6"', precio: 2500.00, categoria: 'PRODUCTO', afectoIGV: true },
-    { id: '2', codigo: 'PROD003', descripcion: 'Laptop Lenovo ThinkPad', precio: 2800.00, categoria: 'PRODUCTO', afectoIGV: true },
-    { id: '3', codigo: 'PROD004', descripcion: 'Laptop Dell Inspiron', precio: 2200.00, categoria: 'PRODUCTO', afectoIGV: true },
-    { id: '4', codigo: 'SERV001', descripcion: 'Servicio de Consultoría IT', precio: 150.00, categoria: 'SERVICIO', afectoIGV: true },
-    { id: '5', codigo: 'PROD002', descripcion: 'Mouse Inalámbrico Logitech', precio: 45.00, categoria: 'PRODUCTO', afectoIGV: true },
-    { id: '6', codigo: 'SERV002', descripcion: 'Soporte Técnico Remoto', precio: 80.00, categoria: 'SERVICIO', afectoIGV: true }
-  ];
 
-  const availableCustomers = [
-    { id: '1', tipoDocumento: 'RUC', numeroDocumento: '20123456789', razonSocial: 'Empresa ABC S.A.C.', direccion: 'Av. Principal 123, Lima' },
-    { id: '2', tipoDocumento: 'DNI', numeroDocumento: '12345678', razonSocial: 'Juan Pérez García', direccion: 'Jr. Los Olivos 456, Lima' },
-    { id: '3', tipoDocumento: 'RUC', numeroDocumento: '20987654321', razonSocial: 'Comercial XYZ E.I.R.L.', direccion: 'Av. Comercio 789, Lima' },
-    { id: '4', tipoDocumento: 'DNI', numeroDocumento: '87654321', razonSocial: 'María González López', direccion: 'Calle Las Flores 321, Lima' }
-  ];
 
   const resetForm = () => {
     setCreditNoteData({
@@ -188,30 +177,40 @@ const CreditNoteCreation = ({ isOpen, onClose }: CreditNoteCreationProps) => {
     }));
   };
 
-  const searchProducts = (searchTerm: string, itemId: string) => {
+  const handleSearchProducts = async (searchTerm: string, itemId: string) => {
     if (searchTerm.length < 2) {
       setShowSearchResults(prev => ({ ...prev, [itemId]: false }));
       return;
     }
     
-    const results = availableProducts.filter(product => 
-      product.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.codigo.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    
-    setSearchResults(results);
-    
-    const inputElement = inputRefs.current[itemId];
-    if (inputElement) {
-      const rect = inputElement.getBoundingClientRect();
-      setDropdownPosition({
-        top: rect.bottom + window.scrollY - 160,
-        left: rect.left + window.scrollX,
-        width: Math.max(rect.width, 300)
-      });
+    try {
+      const results = await searchProducts(searchTerm);
+      const formattedResults = results.map(product => ({
+        id: product.id.toString(),
+        codigo: product.code,
+        descripcion: product.name,
+        precio: product.price,
+        categoria: product.product_type.toUpperCase(),
+        afectoIGV: product.tax_type === 'gravado'
+      }));
+      
+      setSearchResults(formattedResults);
+      
+      const inputElement = inputRefs.current[itemId];
+      if (inputElement) {
+        const rect = inputElement.getBoundingClientRect();
+        setDropdownPosition({
+          top: rect.bottom + window.scrollY - 160,
+          left: rect.left + window.scrollX,
+          width: Math.max(rect.width, 300)
+        });
+      }
+      
+      setShowSearchResults(prev => ({ ...prev, [itemId]: formattedResults.length > 0 }));
+    } catch (error) {
+      console.error('Error searching products:', error);
+      setShowSearchResults(prev => ({ ...prev, [itemId]: false }));
     }
-    
-    setShowSearchResults(prev => ({ ...prev, [itemId]: results.length > 0 }));
   };
 
   const selectProductFromSearch = (product: any, itemId: string) => {
@@ -231,29 +230,38 @@ const CreditNoteCreation = ({ isOpen, onClose }: CreditNoteCreationProps) => {
     setShowSearchResults(prev => ({ ...prev, [itemId]: false }));
   };
 
-  const searchCustomers = (searchTerm: string, inputRef?: HTMLInputElement) => {
+  const handleSearchCustomers = async (searchTerm: string, inputRef?: HTMLInputElement) => {
     if (searchTerm.length < 2) {
       setShowCustomerResults(false);
       return;
     }
     
-    const results = availableCustomers.filter(customer => 
-      customer.numeroDocumento.includes(searchTerm) ||
-      customer.razonSocial.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    
-    setCustomerSearchResults(results);
-    
-    if (inputRef) {
-      const rect = inputRef.getBoundingClientRect();
-      setCustomerDropdownPosition({
-        top: rect.bottom + window.scrollY - 160,
-        left: rect.left + window.scrollX,
-        width: Math.max(rect.width, 400)
-      });
+    try {
+      const results = await searchCustomers(searchTerm);
+      const formattedResults = results.map(customer => ({
+        id: customer.id.toString(),
+        tipoDocumento: customer.document_type.toUpperCase(),
+        numeroDocumento: customer.document_number,
+        razonSocial: customer.name,
+        direccion: customer.address || ''
+      }));
+      
+      setCustomerSearchResults(formattedResults);
+      
+      if (inputRef) {
+        const rect = inputRef.getBoundingClientRect();
+        setCustomerDropdownPosition({
+          top: rect.bottom + window.scrollY - 160,
+          left: rect.left + window.scrollX,
+          width: Math.max(rect.width, 400)
+        });
+      }
+      
+      setShowCustomerResults(formattedResults.length > 0);
+    } catch (error) {
+      console.error('Error searching customers:', error);
+      setShowCustomerResults(false);
     }
-    
-    setShowCustomerResults(searchTerm.length >= 2);
   };
 
   const selectCustomer = (customer: any) => {
@@ -398,8 +406,7 @@ const CreditNoteCreation = ({ isOpen, onClose }: CreditNoteCreationProps) => {
             <InvoiceCliente 
               invoiceData={{cliente: creditNoteData.cliente}}
               setInvoiceData={(data) => setCreditNoteData(prev => ({...prev, cliente: data.cliente}))}
-              availableCustomers={availableCustomers}
-              searchCustomers={searchCustomers}
+              searchCustomers={handleSearchCustomers}
               selectCustomer={selectCustomer}
               customerSearchResults={customerSearchResults}
               showCustomerResults={showCustomerResults}
@@ -420,7 +427,7 @@ const CreditNoteCreation = ({ isOpen, onClose }: CreditNoteCreationProps) => {
               addItem={addItem}
               removeItem={removeItem}
               updateItem={updateItem}
-              searchProducts={searchProducts}
+              searchProducts={handleSearchProducts}
               selectProductFromSearch={selectProductFromSearch}
               openProductSelector={openProductSelector}
               searchResults={searchResults}
@@ -428,7 +435,7 @@ const CreditNoteCreation = ({ isOpen, onClose }: CreditNoteCreationProps) => {
               dropdownPosition={dropdownPosition}
               showProductSelector={showProductSelector}
               setShowProductSelector={setShowProductSelector}
-              availableProducts={availableProducts}
+              availableProducts={searchResults}
               selectProduct={selectProduct}
               inputRefs={inputRefs}
               setShowSearchResults={setShowSearchResults}
