@@ -144,7 +144,7 @@ const Settings = ({ isOpen, onClose }: SettingsProps) => {
   };
 
   const handleSave = async () => {
-    console.log('Guardando configuración...', { localCompanyData, billingConfig });
+    console.log('Guardando configuración...', { localCompanyData });
     
     // Actualizar contexto de empresa
     updateCompanyData(localCompanyData);
