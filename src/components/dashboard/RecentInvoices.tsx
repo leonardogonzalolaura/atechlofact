@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useRecentInvoices } from '../../hooks/useRecentInvoices';
 import { Invoice } from '../../services/invoiceTypes';
+import SunatQuickActions from '../SunatQuickActions';
 
 interface RecentInvoicesProps {
   onPreviewInvoice: (invoice: any) => void;
@@ -134,13 +135,16 @@ const RecentInvoices = ({ onPreviewInvoice }: RecentInvoicesProps) => {
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <button
-                        onClick={() => onPreviewInvoice(invoice)}
-                        className="text-blue-600 hover:text-blue-800 text-sm font-medium px-2 py-1 rounded hover:bg-blue-50 transition-colors"
-                        title="Ver factura"
-                      >
-                        👁️ Ver
-                      </button>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => onPreviewInvoice(invoice)}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                          title="Ver factura"
+                        >
+                          👁️ Ver
+                        </button>
+                        <SunatQuickActions invoice={invoice} />
+                      </div>
                     </td>
                   </tr>
                 );

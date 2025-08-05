@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useInvoices } from '../hooks/useInvoices';
 import { useAlert } from './Alert';
 import { Invoice, InvoiceFilters } from '../services/invoiceTypes';
+import SunatStatusModal from './SunatStatusModal';
 
 interface InvoiceListProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ const InvoiceList = ({ isOpen, onClose }: InvoiceListProps) => {
   });
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showInvoiceDetail, setShowInvoiceDetail] = useState(false);
+  const [showSunatStatus, setShowSunatStatus] = useState(false);
   
   const { 
     invoices, 
@@ -248,7 +250,7 @@ const InvoiceList = ({ isOpen, onClose }: InvoiceListProps) => {
                         {new Date(invoice.issue_date).toLocaleDateString('es-PE')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {invoice.currency} {invoice.total_amount.toFixed(2)}
+                        {invoice.currency} {(Number(invoice.total_amount)|| 0 ).toFixed(2)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadge(invoice.status)}`}>
@@ -256,9 +258,16 @@ const InvoiceList = ({ isOpen, onClose }: InvoiceListProps) => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getSunatStatusBadge(invoice.sunat_status)}`}>
+                        <button
+                          onClick={() => {
+                            setSelectedInvoice(invoice);
+                            setShowSunatStatus(true);
+                          }}
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full hover:opacity-80 transition-opacity ${getSunatStatusBadge(invoice.sunat_status)}`}
+                          title="Ver detalles del estado SUNAT"
+                        >
                           {invoice.sunat_status}
-                        </span>
+                        </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
@@ -342,6 +351,15 @@ const InvoiceList = ({ isOpen, onClose }: InvoiceListProps) => {
         )}
 
         <AlertComponent />
+        
+        <SunatStatusModal
+          invoice={selectedInvoice}
+          isOpen={showSunatStatus}
+          onClose={() => {
+            setShowSunatStatus(false);
+            setSelectedInvoice(null);
+          }}
+        />
       </div>
     </div>
   );

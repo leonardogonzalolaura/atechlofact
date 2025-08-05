@@ -61,7 +61,7 @@ class NotificationService {
 
   // Desktop Notifications
   private async requestDesktopPermission(): Promise<boolean> {
-    if (!('Notification' in window)) return false;
+    if (typeof window === 'undefined' || !('Notification' in window)) return false;
     
     if (Notification.permission === 'granted') return true;
     
@@ -168,12 +168,18 @@ class NotificationService {
 
   // Notification management
   getAll(): BaseNotification[] {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return [];
+    }
     const stored = localStorage.getItem('notifications');
     return stored ? JSON.parse(stored) : [];
   }
 
   async syncNotifications(): Promise<void> {
     // Skip if recently synced
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
     const lastNotificationSync = localStorage.getItem('lastNotificationSync');
     if (lastNotificationSync) {
       const age = Date.now() - parseInt(lastNotificationSync);
@@ -200,7 +206,9 @@ class NotificationService {
         .slice(0, this.config.maxNotifications);
       
       this.saveNotifications(mergedNotifications);
-      localStorage.setItem('lastNotificationSync', Date.now().toString());
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('lastNotificationSync', Date.now().toString());
+      }
       this.notifyListeners();
     } catch (error) {
       console.warn('Could not sync notifications with backend:', error);
@@ -262,7 +270,9 @@ class NotificationService {
   }
 
   clear(): void {
-    localStorage.removeItem('notifications');
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      localStorage.removeItem('notifications');
+    }
     this.notifyListeners();
   }
 
@@ -295,16 +305,22 @@ class NotificationService {
   }
 
   private saveNotifications(notifications: BaseNotification[]): void {
-    localStorage.setItem('notifications', JSON.stringify(notifications));
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      localStorage.setItem('notifications', JSON.stringify(notifications));
+    }
   }
 
   private saveConfig(): void {
-    localStorage.setItem('notificationConfig', JSON.stringify(this.config));
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      localStorage.setItem('notificationConfig', JSON.stringify(this.config));
+    }
   }
 
   private saveConfigWithTimestamp(): void {
-    localStorage.setItem('notificationConfig', JSON.stringify(this.config));
-    localStorage.setItem('notificationConfigTimestamp', Date.now().toString());
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      localStorage.setItem('notificationConfig', JSON.stringify(this.config));
+      localStorage.setItem('notificationConfigTimestamp', Date.now().toString());
+    }
   }
 
   private notifyListeners(): void {
@@ -314,6 +330,9 @@ class NotificationService {
 
   private loadConfigFromCache(): void {
     try {
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+        return;
+      }
       const cachedConfig = localStorage.getItem('notificationConfig');
       const cacheTimestamp = localStorage.getItem('notificationConfigTimestamp');
       
@@ -381,7 +400,9 @@ class NotificationService {
 
   // Force sync (for user actions)
   async forceSyncNotifications(): Promise<void> {
-    localStorage.removeItem('lastNotificationSync');
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      localStorage.removeItem('lastNotificationSync');
+    }
     await this.syncNotifications();
   }
 }
