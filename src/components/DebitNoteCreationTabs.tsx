@@ -402,7 +402,6 @@ const DebitNoteCreation = ({ isOpen, onClose }: DebitNoteCreationProps) => {
             <InvoiceCliente 
               invoiceData={{cliente: debitNoteData.cliente}}
               setInvoiceData={(data) => setDebitNoteData(prev => ({...prev, cliente: data.cliente}))}
-              availableCustomers={availableCustomers}
               searchCustomers={handleSearchCustomers}
               selectCustomer={selectCustomer}
               customerSearchResults={customerSearchResults}

@@ -531,7 +531,6 @@ const RemissionGuideCreation = ({ isOpen, onClose }: RemissionGuideCreationProps
             <InvoiceCliente 
               invoiceData={{cliente: guideData.cliente}}
               setInvoiceData={(data) => setGuideData(prev => ({...prev, cliente: data.cliente}))}
-              availableCustomers={availableCustomers}
               searchCustomers={handleSearchCustomers}
               selectCustomer={selectCustomer}
               customerSearchResults={customerSearchResults}
