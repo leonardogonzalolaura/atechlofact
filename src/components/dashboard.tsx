@@ -44,7 +44,7 @@ const Dashboard = () => {
     const [isInvoiceListOpen, setIsInvoiceListOpen] = useState(false);
     const [isReportsDashboardOpen, setIsReportsDashboardOpen] = useState(false);
     const [showInvoicePreview, setShowInvoicePreview] = useState(false);
-    const [selectedInvoice, setSelectedInvoice] = useState(null);
+    const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
     const [showCompanyRequired, setShowCompanyRequired] = useState(false);
     
     const { hasCompanies, loading, activeCompany } = useCompany();
