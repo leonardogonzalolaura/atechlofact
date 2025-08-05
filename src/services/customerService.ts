@@ -9,6 +9,7 @@ import {
   DeleteCustomerResponse
 } from './customerTypes';
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL
 
 export const customerService = {
   async getCustomers(companyId: string, filters?: CustomerFilters): Promise<CustomersResponse> {
@@ -20,9 +21,9 @@ export const customerService = {
       if (filters?.search) params.append('search', filters.search);
       if (filters?.document_type) params.append('document_type', filters.document_type);
       if (filters?.active !== undefined) params.append('active', filters.active.toString());
-
+      console.log(`Obteniendo clientes desde ${API_BASE_URL}`);
       const queryString = params.toString();
-      const url = `https://tools.apis.atechlo.com/apisunat/companies/${companyId}/customers${queryString ? `?${queryString}` : ''}`;
+      const url = `${API_BASE_URL}/companies/${companyId}/customers${queryString ? `?${queryString}` : ''}`;
 
       const response = await fetch(url, {
         method: 'GET',
