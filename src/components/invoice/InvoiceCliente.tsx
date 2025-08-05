@@ -172,7 +172,7 @@ const InvoiceCliente = ({
           setNewCustomerName('');
         }}
         initialData={{
-          razonSocial: newCustomerName
+          name: newCustomerName
         }}
         onSave={(customerData) => {
           setInvoiceData({
