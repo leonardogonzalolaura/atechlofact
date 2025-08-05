@@ -23,7 +23,7 @@ export const customerService = {
       if (filters?.active !== undefined) params.append('active', filters.active.toString());
 
       const queryString = params.toString();
-      const url = `${API_BASE_URL}/companies/${companyId}/customers${queryString ? `?${queryString}` : ''}`;
+      const url = `https://tools.apis.atechlo.com/apisunat/companies/${companyId}/customers${queryString ? `?${queryString}` : ''}`;
 
       const response = await fetch(url, {
         method: 'GET',
