@@ -9,7 +9,6 @@ import {
   DeleteCustomerResponse
 } from './customerTypes';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 export const customerService = {
   async getCustomers(companyId: string, filters?: CustomerFilters): Promise<CustomersResponse> {
