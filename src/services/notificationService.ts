@@ -176,10 +176,17 @@ class NotificationService {
   }
 
   async syncNotifications(): Promise<void> {
-    // Skip if recently synced
+    // Skip if recently synced or not authenticated
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
       return;
     }
+    
+    // Check if user is authenticated
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return; // Don't sync if not authenticated
+    }
+    
     const lastNotificationSync = localStorage.getItem('lastNotificationSync');
     if (lastNotificationSync) {
       const age = Date.now() - parseInt(lastNotificationSync);
@@ -350,9 +357,17 @@ class NotificationService {
   }
 
   private async loadConfigFromApi(): Promise<void> {
-    // Skip if recently synced
+    // Skip if recently synced or not authenticated
     if (this.configSynced && (Date.now() - this.lastSyncTime) < this.syncInterval) {
       return;
+    }
+    
+    // Check if user is authenticated
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        return; // Don't load config if not authenticated
+      }
     }
 
     try {

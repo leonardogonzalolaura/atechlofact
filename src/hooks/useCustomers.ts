@@ -145,10 +145,6 @@ export const useCustomers = (filters?: CustomerFilters) => {
   // Listen for customer creation events
   useEffect(() => {
     const handleCustomerCreated = () => {
-      // Clear cache and force refresh when new customer is created
-      const cacheKey = `customers_${activeCompany?.id}_${JSON.stringify(filters)}`;
-      localStorage.removeItem(cacheKey);
-      localStorage.removeItem(`${cacheKey}_timestamp`);
       loadCustomers(true);
     };
     
@@ -157,7 +153,7 @@ export const useCustomers = (filters?: CustomerFilters) => {
     return () => {
       window.removeEventListener('customerCreated', handleCustomerCreated);
     };
-  }, [loadCustomers, activeCompany?.id, filters]);
+  }, [loadCustomers]);
 
   return {
     customers,

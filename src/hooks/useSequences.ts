@@ -128,8 +128,16 @@ export const useSequences = () => {
 
   // Initial load
   useEffect(() => {
-    loadSequences();
-  }, [loadSequences]);
+    // No ejecutar en página de login
+    if (typeof window !== 'undefined') {
+      const isLoginPage = window.location.pathname === '/' || window.location.pathname === '/login';
+      if (isLoginPage) return;
+    }
+    
+    if (activeCompany?.id) {
+      loadSequences();
+    }
+  }, [activeCompany?.id]);
 
   // Auto-refresh every 30 minutes if data is stale
   useEffect(() => {

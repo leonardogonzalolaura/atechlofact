@@ -99,12 +99,22 @@ export const useProducts = (filters?: ProductFilters) => {
   };
 
   useEffect(() => {
-    loadProducts();
+    // No ejecutar en página de login
+    if (typeof window !== 'undefined') {
+      const isLoginPage = window.location.pathname === '/' || window.location.pathname === '/login';
+      if (isLoginPage) return;
+    }
+    
+    if (activeCompany?.id) {
+      loadProducts();
+    }
   }, [activeCompany?.id, filters?.search, filters?.category, filters?.type, filters?.active]);
   
   useEffect(() => {
     const handleProductCreated = () => {
-      loadProducts();
+      if (activeCompany?.id) {
+        loadProducts();
+      }
     };
     
     window.addEventListener('productCreated', handleProductCreated);
@@ -112,7 +122,7 @@ export const useProducts = (filters?: ProductFilters) => {
     return () => {
       window.removeEventListener('productCreated', handleProductCreated);
     };
-  }, [loadProducts]);
+  }, [activeCompany?.id]);
 
   return {
     products,

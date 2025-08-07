@@ -19,6 +19,10 @@ const Login = () => {
     console.log('URL de API:', process.env.NEXT_PUBLIC_API_BASE_URL);
 
     useEffect(() => {
+        // Limpiar cualquier sesión anterior al cargar login
+        console.log('Limpiando sesión anterior en login');
+        authService.logout();
+        
         const savedCredentials = localStorage.getItem('rememberedCredentials');
         if (savedCredentials) {
             const parsed = JSON.parse(savedCredentials);
@@ -38,6 +42,7 @@ const Login = () => {
 
         try {
             const data = await authService.login({ login, password });
+            console.log('Login response:', data);
             localStorage.setItem('token', data.token);
             
             if (rememberMe) {
@@ -46,7 +51,8 @@ const Login = () => {
                 localStorage.removeItem('rememberedCredentials');
             }
             
-            router.push('/dashboard');
+            // Recargar empresas directamente después del login
+            window.location.href = '/dashboard';
         } catch (error) {
             setError(error instanceof Error ? error.message : 'Error de conexión. Intente nuevamente.');
         } finally {

@@ -1,6 +1,7 @@
 'use client'
 import React, { createContext, useContext } from 'react';
 import { useActiveCompany } from '../hooks/useActiveCompany';
+import { authService } from '../services/authService';
 
 interface CompanyData {
   ruc: string;

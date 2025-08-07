@@ -23,7 +23,7 @@ function SuccessContent() {
       
       // Redirigir al dashboard inmediatamente
       setTimeout(() => {
-        router.push('/dashboard');
+        window.location.href = '/dashboard';
       }, 1500);
       
       // Enviar email de bienvenida solo para usuarios nuevos (no bloqueante)

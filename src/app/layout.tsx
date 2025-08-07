@@ -5,6 +5,7 @@ import { TaxProvider } from '../contexts/TaxContext';
 import { SeriesProvider } from '../contexts/SeriesContext';
 import { CompanyProvider } from '../contexts/CompanyContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
+import { DataProvider } from '../contexts/DataContext';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,9 +35,11 @@ export default function RootLayout({
         <TaxProvider>
           <SeriesProvider>
             <CompanyProvider>
-              <NotificationProvider>
-                {children}
-              </NotificationProvider>
+              <DataProvider>
+                <NotificationProvider>
+                  {children}
+                </NotificationProvider>
+              </DataProvider>
             </CompanyProvider>
           </SeriesProvider>
         </TaxProvider>

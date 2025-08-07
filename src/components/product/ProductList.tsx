@@ -43,12 +43,12 @@ const ProductList = ({ isOpen, onClose }: ProductListProps) => {
   
   console.log('ProductList - Company state:', { activeCompany: activeCompany?.name, hasCompanies, companyLoading });
   
-  // Recargar productos cuando se abre el modal
+  // Solo cargar productos la primera vez que se abre el modal
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && products.length === 0 && !loading) {
       loadProducts();
     }
-  }, [isOpen, loadProducts]);
+  }, [isOpen]);
   
   // Convertir productos de API al formato del componente
   useEffect(() => {
